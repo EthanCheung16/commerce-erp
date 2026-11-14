@@ -1,0 +1,602 @@
+[
+  {
+    "code": "annual-category-sales",
+    "category": "SALES",
+    "title": "年度品类销售汇总",
+    "statement": "com.example.commerce.report.XmlReportMapper.annualCategorySales"
+  },
+  {
+    "code": "cart-conversion-revenue",
+    "category": "SALES",
+    "title": "移动端或购物车商品成交",
+    "statement": "com.example.commerce.report.XmlReportMapper.cartConversionRevenue"
+  },
+  {
+    "code": "channel-average-price",
+    "category": "SALES",
+    "title": "渠道商品平均售价",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.channelAveragePrice"
+  },
+  {
+    "code": "channel-basket-bands",
+    "category": "SALES",
+    "title": "渠道购买件数分布",
+    "statement": "com.example.commerce.report.XmlReportMapper.channelBasketBands"
+  },
+  {
+    "code": "channel-brand-revenue",
+    "category": "SALES",
+    "title": "渠道品牌销售额",
+    "statement": "com.example.commerce.report.XmlReportMapper.channelBrandRevenue"
+  },
+  {
+    "code": "channel-calendar-mix",
+    "category": "SALES",
+    "title": "渠道工作日周末销售",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.channelCalendarMix"
+  },
+  {
+    "code": "channel-cart-interest",
+    "category": "SALES",
+    "title": "渠道商品购物车关注度",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.channelCartInterest"
+  },
+  {
+    "code": "channel-category-sales",
+    "category": "SALES",
+    "title": "渠道品类销售额",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.channelCategorySales"
+  },
+  {
+    "code": "channel-kpis",
+    "category": "SALES",
+    "title": "各渠道销售指标",
+    "statement": "com.example.commerce.report.XmlReportMapper.channelKpis"
+  },
+  {
+    "code": "channel-sales-summary",
+    "category": "SALES",
+    "title": "渠道销售总额",
+    "statement": "com.example.commerce.report.XmlReportMapper.channelSalesSummary"
+  },
+  {
+    "code": "customer-return-counts",
+    "category": "SALES",
+    "title": "客户订单售后次数",
+    "statement": "com.example.commerce.report.XmlReportMapper.customerReturnCounts"
+  },
+  {
+    "code": "daily-sales",
+    "category": "SALES",
+    "title": "每日订单商品销售额",
+    "statement": "com.example.commerce.report.XmlReportMapper.dailySales"
+  },
+  {
+    "code": "daily-sales-volume",
+    "category": "SALES",
+    "title": "每日销售件数",
+    "statement": "com.example.commerce.report.XmlReportMapper.dailySalesVolume"
+  },
+  {
+    "code": "discounted-orders",
+    "category": "SALES",
+    "title": "享受订单优惠的商品数量",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.discountedOrders"
+  },
+  {
+    "code": "mobile-order-items",
+    "category": "SALES",
+    "title": "移动端订单商品汇总",
+    "statement": "com.example.commerce.report.XmlReportMapper.mobileOrderItems"
+  },
+  {
+    "code": "mobile-order-prices",
+    "category": "SALES",
+    "title": "移动端订单平均单价",
+    "statement": "com.example.commerce.report.XmlReportMapper.mobileOrderPrices"
+  },
+  {
+    "code": "monthly-category-sales",
+    "category": "SALES",
+    "title": "月度品类成交金额",
+    "statement": "com.example.commerce.report.XmlReportMapper.monthlyCategorySales"
+  },
+  {
+    "code": "monthly-revenue",
+    "category": "SALES",
+    "title": "月度销售额",
+    "statement": "com.example.commerce.report.XmlReportMapper.monthlyRevenue"
+  },
+  {
+    "code": "paid-order-amounts",
+    "category": "SALES",
+    "title": "已支付订单金额排名",
+    "statement": "com.example.commerce.report.XmlReportMapper.paidOrderAmounts"
+  },
+  {
+    "code": "paid-order-items",
+    "category": "SALES",
+    "title": "已支付订单商品统计",
+    "statement": "com.example.commerce.report.XmlReportMapper.paidOrderItems"
+  },
+  {
+    "code": "promotion-audience-revenue",
+    "category": "SALES",
+    "title": "平台渠道或持券客户销售",
+    "statement": "com.example.commerce.report.XmlReportMapper.promotionAudienceRevenue"
+  },
+  {
+    "code": "promotion-sales",
+    "category": "SALES",
+    "title": "促销活动销售统计",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.promotionSales"
+  },
+  {
+    "code": "promotion-volume",
+    "category": "SALES",
+    "title": "促销活动商品销量",
+    "statement": "com.example.commerce.report.XmlReportMapper.promotionVolume"
+  },
+  {
+    "code": "tenant-order-coverage",
+    "category": "SALES",
+    "title": "商户成交订单数",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.tenantOrderCoverage"
+  },
+  {
+    "code": "tenant-quarter-revenue",
+    "category": "SALES",
+    "title": "商户季度销售额",
+    "statement": "com.example.commerce.report.XmlReportMapper.tenantQuarterRevenue"
+  },
+  {
+    "code": "web-order-quantities",
+    "category": "SALES",
+    "title": "网页订单商品数量排名",
+    "statement": "com.example.commerce.report.XmlReportMapper.webOrderQuantities"
+  },
+  {
+    "code": "customer-order-line-counts",
+    "category": "CUSTOMERS",
+    "title": "客户累计订单行数",
+    "statement": "com.example.commerce.report.XmlReportMapper.customerOrderLineCounts"
+  },
+  {
+    "code": "customer-spending",
+    "category": "CUSTOMERS",
+    "title": "客户消费排名",
+    "statement": "com.example.commerce.report.XmlReportMapper.customerSpending"
+  },
+  {
+    "code": "email-domain-sales",
+    "category": "CUSTOMERS",
+    "title": "客户邮箱域名销售贡献",
+    "statement": "com.example.commerce.report.XmlReportMapper.emailDomainSales"
+  },
+  {
+    "code": "gold-customer-lifetime-value",
+    "category": "CUSTOMERS",
+    "title": "金卡客户累计消费",
+    "statement": "com.example.commerce.report.XmlReportMapper.goldCustomerLifetimeValue"
+  },
+  {
+    "code": "gold-customer-orders",
+    "category": "CUSTOMERS",
+    "title": "金卡客户订单金额排名",
+    "statement": "com.example.commerce.report.XmlReportMapper.goldCustomerOrders"
+  },
+  {
+    "code": "guangdong-orders",
+    "category": "CUSTOMERS",
+    "title": "广东客户订单件数排名",
+    "statement": "com.example.commerce.report.XmlReportMapper.guangdongOrders"
+  },
+  {
+    "code": "phone-prefix-sales",
+    "category": "CUSTOMERS",
+    "title": "手机号段客户消费贡献",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.phonePrefixSales"
+  },
+  {
+    "code": "platinum-order-discounts",
+    "category": "CUSTOMERS",
+    "title": "白金客户订单优惠额",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.platinumOrderDiscounts"
+  },
+  {
+    "code": "priority-customer-revenue",
+    "category": "CUSTOMERS",
+    "title": "高等级或高消费客户销售",
+    "statement": "com.example.commerce.report.XmlReportMapper.priorityCustomerRevenue"
+  },
+  {
+    "code": "province-category-sales",
+    "category": "CUSTOMERS",
+    "title": "省份品类销售汇总",
+    "statement": "com.example.commerce.report.XmlReportMapper.provinceCategorySales"
+  },
+  {
+    "code": "province-customer-address-counts",
+    "category": "CUSTOMERS",
+    "title": "省份客户多地址覆盖",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.provinceCustomerAddressCounts"
+  },
+  {
+    "code": "province-customer-value",
+    "category": "CUSTOMERS",
+    "title": "广东客户累计成交",
+    "statement": "com.example.commerce.report.XmlReportMapper.provinceCustomerValue"
+  },
+  {
+    "code": "recent-customer-purchase-count",
+    "category": "CUSTOMERS",
+    "title": "近期注册客户购买品种",
+    "statement": "com.example.commerce.report.XmlReportMapper.recentCustomerPurchaseCount"
+  },
+  {
+    "code": "repeat-buyer-revenue",
+    "category": "CUSTOMERS",
+    "title": "白金或多次购买客户销售",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.repeatBuyerRevenue"
+  },
+  {
+    "code": "tenant-customer-breadth",
+    "category": "CUSTOMERS",
+    "title": "商户客户购买品牌数",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.tenantCustomerBreadth"
+  },
+  {
+    "code": "tier-available-coupon-counts",
+    "category": "CUSTOMERS",
+    "title": "会员等级可用优惠券触达",
+    "statement": "com.example.commerce.report.XmlReportMapper.tierAvailableCouponCounts"
+  },
+  {
+    "code": "brand-channel-revenue",
+    "category": "PRODUCTS",
+    "title": "品牌渠道金额",
+    "statement": "com.example.commerce.report.XmlReportMapper.brandChannelRevenue"
+  },
+  {
+    "code": "category-discount-coverage",
+    "category": "PRODUCTS",
+    "title": "品类优惠覆盖指标",
+    "statement": "com.example.commerce.report.XmlReportMapper.categoryDiscountCoverage"
+  },
+  {
+    "code": "category-sku-breadth",
+    "category": "PRODUCTS",
+    "title": "成交品类 SKU 丰富度",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.categorySkuBreadth"
+  },
+  {
+    "code": "category-sku-revenue",
+    "category": "PRODUCTS",
+    "title": "品类 SKU 销售额",
+    "statement": "com.example.commerce.report.XmlReportMapper.categorySkuRevenue"
+  },
+  {
+    "code": "category-status-revenue",
+    "category": "PRODUCTS",
+    "title": "品类按订单状态销售",
+    "statement": "com.example.commerce.report.XmlReportMapper.categoryStatusRevenue"
+  },
+  {
+    "code": "channel-reviewed-line-counts",
+    "category": "PRODUCTS",
+    "title": "渠道商品评价覆盖",
+    "statement": "com.example.commerce.report.XmlReportMapper.channelReviewedLineCounts"
+  },
+  {
+    "code": "heavy-sku-revenue",
+    "category": "PRODUCTS",
+    "title": "大件 SKU 成交金额",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.heavySkuRevenue"
+  },
+  {
+    "code": "high-price-sku-buyers",
+    "category": "PRODUCTS",
+    "title": "高价 SKU 购买人数",
+    "statement": "com.example.commerce.report.XmlReportMapper.highPriceSkuBuyers"
+  },
+  {
+    "code": "offline-product-sales",
+    "category": "PRODUCTS",
+    "title": "下架商品历史销量",
+    "statement": "com.example.commerce.report.XmlReportMapper.offlineProductSales"
+  },
+  {
+    "code": "price-band-sales",
+    "category": "PRODUCTS",
+    "title": "价格带销售贡献",
+    "statement": "com.example.commerce.report.XmlReportMapper.priceBandSales"
+  },
+  {
+    "code": "quality-concern-revenue",
+    "category": "PRODUCTS",
+    "title": "退回或低评分商品销售",
+    "statement": "com.example.commerce.report.XmlReportMapper.qualityConcernRevenue"
+  },
+  {
+    "code": "sku-revenue-ranking",
+    "category": "PRODUCTS",
+    "title": "SKU 销售额排名",
+    "statement": "com.example.commerce.report.XmlReportMapper.skuRevenueRanking"
+  },
+  {
+    "code": "sku-sales-ranking",
+    "category": "PRODUCTS",
+    "title": "商品销售排行榜",
+    "statement": "com.example.commerce.report.XmlReportMapper.skuSalesRanking"
+  },
+  {
+    "code": "after-sale-category-revenue",
+    "category": "FULFILLMENT",
+    "title": "退款中或已申请售后品类",
+    "statement": "com.example.commerce.report.XmlReportMapper.afterSaleCategoryRevenue"
+  },
+  {
+    "code": "category-warehouse-availability",
+    "category": "FULFILLMENT",
+    "title": "品类销售时库存点数量",
+    "statement": "com.example.commerce.report.XmlReportMapper.categoryWarehouseAvailability"
+  },
+  {
+    "code": "category-weight-bands",
+    "category": "FULFILLMENT",
+    "title": "品类重量段成交",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.categoryWeightBands"
+  },
+  {
+    "code": "completed-order-weight",
+    "category": "FULFILLMENT",
+    "title": "已完成订单重量排名",
+    "statement": "com.example.commerce.report.XmlReportMapper.completedOrderWeight"
+  },
+  {
+    "code": "free-shipping-orders",
+    "category": "FULFILLMENT",
+    "title": "包邮订单货值排名",
+    "statement": "com.example.commerce.report.XmlReportMapper.freeShippingOrders"
+  },
+  {
+    "code": "fulfillment-risk-revenue",
+    "category": "FULFILLMENT",
+    "title": "未发货或运输中订单货值",
+    "statement": "com.example.commerce.report.XmlReportMapper.fulfillmentRiskRevenue"
+  },
+  {
+    "code": "fulfillment-summary",
+    "category": "FULFILLMENT",
+    "title": "履约状态明细数",
+    "statement": "com.example.commerce.report.XmlReportMapper.fulfillmentSummary"
+  },
+  {
+    "code": "inventory-movement-revenue",
+    "category": "FULFILLMENT",
+    "title": "门店或高周转商品销售",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.inventoryMovementRevenue"
+  },
+  {
+    "code": "logistics-concern-revenue",
+    "category": "FULFILLMENT",
+    "title": "大额或多轨迹订单货值",
+    "statement": "com.example.commerce.report.XmlReportMapper.logisticsConcernRevenue"
+  },
+  {
+    "code": "low-stock-brand-revenue",
+    "category": "FULFILLMENT",
+    "title": "畅销或低库存品牌销售",
+    "statement": "com.example.commerce.report.XmlReportMapper.lowStockBrandRevenue"
+  },
+  {
+    "code": "return-exposure-revenue",
+    "category": "FULFILLMENT",
+    "title": "折扣或高退货商品销售",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.returnExposureRevenue"
+  },
+  {
+    "code": "shipped-order-lines",
+    "category": "FULFILLMENT",
+    "title": "已发货订单商品种类",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.shippedOrderLines"
+  },
+  {
+    "code": "tenant-returned-line-counts",
+    "category": "FULFILLMENT",
+    "title": "商户退货明细覆盖",
+    "statement": "com.example.commerce.report.XmlReportMapper.tenantReturnedLineCounts"
+  },
+  {
+    "code": "warehouse-daily-sales",
+    "category": "FULFILLMENT",
+    "title": "仓库每日销量",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.warehouseDailySales"
+  },
+  {
+    "code": "warehouse-fulfillment-units",
+    "category": "FULFILLMENT",
+    "title": "仓库履约阶段件数",
+    "statement": "com.example.commerce.report.XmlReportMapper.warehouseFulfillmentUnits"
+  },
+  {
+    "code": "warehouse-order-state-value",
+    "category": "FULFILLMENT",
+    "title": "仓库异常订单金额",
+    "statement": "com.example.commerce.report.XmlReportMapper.warehouseOrderStateValue"
+  },
+  {
+    "code": "warehouse-order-value",
+    "category": "FULFILLMENT",
+    "title": "一号仓订单货值排名",
+    "statement": "com.example.commerce.report.XmlReportMapper.warehouseOrderValue"
+  },
+  {
+    "code": "warehouse-order-weight",
+    "category": "FULFILLMENT",
+    "title": "仓库订单重量",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.warehouseOrderWeight"
+  },
+  {
+    "code": "warehouse-product-coverage",
+    "category": "FULFILLMENT",
+    "title": "仓库成交 SKU 数",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.warehouseProductCoverage"
+  },
+  {
+    "code": "warehouse-sales-volume",
+    "category": "FULFILLMENT",
+    "title": "仓库销售件数",
+    "statement": "com.example.commerce.report.XmlReportMapper.warehouseSalesVolume"
+  },
+  {
+    "code": "warehouse-shipment-counts",
+    "category": "FULFILLMENT",
+    "title": "仓库订单发运次数",
+    "statement": "com.example.commerce.report.XmlReportMapper.warehouseShipmentCounts"
+  },
+  {
+    "code": "warehouse-shipment-event-counts",
+    "category": "FULFILLMENT",
+    "title": "仓库物流轨迹覆盖",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.warehouseShipmentEventCounts"
+  },
+  {
+    "code": "weekday-fulfillment",
+    "category": "FULFILLMENT",
+    "title": "工作日履约分布",
+    "statement": "com.example.commerce.report.XmlReportMapper.weekdayFulfillment"
+  },
+  {
+    "code": "brand-purchase-coverage",
+    "category": "PROCUREMENT",
+    "title": "品牌商品采购批次覆盖",
+    "statement": "com.example.commerce.report.XmlReportMapper.brandPurchaseCoverage"
+  },
+  {
+    "code": "replenishment-supplier-revenue",
+    "category": "PROCUREMENT",
+    "title": "高数量或待采购供应商销售",
+    "statement": "com.example.commerce.report.XmlReportMapper.replenishmentSupplierRevenue"
+  },
+  {
+    "code": "supplier-concentration-revenue",
+    "category": "PROCUREMENT",
+    "title": "高价或高采购量商品销售",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.supplierConcentrationRevenue"
+  },
+  {
+    "code": "supplier-positive-review-coverage",
+    "category": "PROCUREMENT",
+    "title": "供应商商品五星评价覆盖",
+    "statement": "com.example.commerce.report.XmlReportMapper.supplierPositiveReviewCoverage"
+  },
+  {
+    "code": "supplier-price-bands",
+    "category": "PROCUREMENT",
+    "title": "供应商价格带销售",
+    "statement": "com.example.commerce.report.XmlReportMapper.supplierPriceBands"
+  },
+  {
+    "code": "supplier-promotion-mix",
+    "category": "PROCUREMENT",
+    "title": "供应商促销参与结构",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.supplierPromotionMix"
+  },
+  {
+    "code": "supplier-sku-demand",
+    "category": "PROCUREMENT",
+    "title": "供应商 SKU 需求",
+    "statement": "com.example.commerce.report.XmlReportMapper.supplierSkuDemand"
+  },
+  {
+    "code": "annual-order-discounts",
+    "category": "FINANCE",
+    "title": "年度订单明细优惠排名",
+    "statement": "com.example.commerce.report.XmlReportMapper.annualOrderDiscounts"
+  },
+  {
+    "code": "brand-margin-metrics",
+    "category": "FINANCE",
+    "title": "品牌收入成本毛利",
+    "statement": "com.example.commerce.report.XmlReportMapper.brandMarginMetrics"
+  },
+  {
+    "code": "brand-sku-discount",
+    "category": "FINANCE",
+    "title": "品牌 SKU 优惠额",
+    "statement": "com.example.commerce.report.XmlReportMapper.brandSkuDiscount"
+  },
+  {
+    "code": "channel-discount-rate",
+    "category": "FINANCE",
+    "title": "渠道商品优惠率",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.channelDiscountRate"
+  },
+  {
+    "code": "channel-paid-order-counts",
+    "category": "FINANCE",
+    "title": "渠道支付记录覆盖情况",
+    "statement": "com.example.commerce.report.XmlReportMapper.channelPaidOrderCounts"
+  },
+  {
+    "code": "discount-band-sales",
+    "category": "FINANCE",
+    "title": "折扣区间销售额",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.discountBandSales"
+  },
+  {
+    "code": "discount-order-value",
+    "category": "FINANCE",
+    "title": "大额优惠订单明细总额",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.discountOrderValue"
+  },
+  {
+    "code": "marketplace-order-margin",
+    "category": "FINANCE",
+    "title": "平台渠道订单毛利",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.marketplaceOrderMargin"
+  },
+  {
+    "code": "order-age-sales",
+    "category": "FINANCE",
+    "title": "订单账龄商品金额",
+    "statement": "com.example.commerce.report.XmlReportMapper.orderAgeSales"
+  },
+  {
+    "code": "order-status-value",
+    "category": "FINANCE",
+    "title": "订单状态货值",
+    "statement": "com.example.commerce.report.XmlReportMapper.orderStatusValue"
+  },
+  {
+    "code": "paid-date-order-value",
+    "category": "FINANCE",
+    "title": "按支付时间筛选订单货值",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.paidDateOrderValue"
+  },
+  {
+    "code": "payment-exception-revenue",
+    "category": "FINANCE",
+    "title": "未付款或退款订单货值",
+    "statement": "com.example.commerce.report.XmlReportMapper.paymentExceptionRevenue"
+  },
+  {
+    "code": "tenant-discount-summary",
+    "category": "FINANCE",
+    "title": "商户明细优惠总额",
+    "statement": "com.example.commerce.report.XmlReportMapper.tenantDiscountSummary"
+  },
+  {
+    "code": "tenant-order-margin",
+    "category": "FINANCE",
+    "title": "商户订单毛利排名",
+    "statement": "com.example.commerce.report.XmlReportMapper.tenantOrderMargin"
+  },
+  {
+    "code": "tenant-shipping-mix",
+    "category": "FINANCE",
+    "title": "商户运费与优惠分组",
+    "statement": "com.example.commerce.report.AnnotationReportMapper.tenantShippingMix"
+  }
+]

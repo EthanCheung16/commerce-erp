@@ -1,0 +1,26 @@
+server:
+  address: 127.0.0.1
+  port: ${SERVER_PORT:8080}
+spring:
+  application:
+    name: commerce-erp
+  datasource:
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:commerce_erp}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Kuala_Lumpur&characterEncoding=UTF-8
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+    hikari:
+      maximum-pool-size: 6
+      minimum-idle: 1
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    local-cache-scope: STATEMENT
+    default-statement-timeout: 30
+logging:
+  level:
+    com.example.commerce: INFO

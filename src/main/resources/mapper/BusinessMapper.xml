@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.commerce.business.BusinessMapper">
+  <select id="dashboardOrders" resultType="map">
+    SELECT COUNT(*) order_count,
+      COALESCE(SUM(CASE WHEN status IN ('PAID','SHIPPED','COMPLETED') THEN total_amount ELSE 0 END),0) sales_amount,
+      COALESCE(SUM(status='PENDING'),0) pending_count,
+      COALESCE(SUM(status='PAID'),0) paid_count,
+      COALESCE(SUM(status='SHIPPED'),0) shipped_count,
+      COALESCE(SUM(status='COMPLETED'),0) completed_count,
+      COALESCE(SUM(status='CANCELLED'),0) cancelled_count,
+      COALESCE(SUM(status='REFUNDING'),0) refunding_count
+    FROM sales_order
+  </select>
+  <select id="dashboardInventory" resultType="map">
+    SELECT COALESCE(SUM(available_qty),0) available_qty,
+      COALESCE(SUM(available_qty &lt;= reorder_point),0) low_stock_count,
+      (SELECT COUNT(*) FROM sku) sku_count FROM inventory
+  </select>
+  <select id="purchases" resultType="map">
+    SELECT po.id,po.status,po.ordered_at,po.expected_at,s.name supplier_name,w.name warehouse_name
+    FROM purchase_order po JOIN supplier s ON s.id=po.supplier_id JOIN warehouse w ON w.id=po.warehouse_id
+    <where>
+      <if test="status != null">po.status=#{status}</if>
+      <if test="beforeId != null">AND po.id &lt; #{beforeId}</if>
+    </where>
+    ORDER BY po.id DESC LIMIT #{limit}
+  </select>
+  <select id="returns" resultType="map">
+    SELECT r.id,r.order_id,r.customer_id,r.reason,r.status,r.refund_amount,r.requested_at,c.name customer_name
+    FROM return_order r JOIN customer c ON c.id=r.customer_id
+    <where>
+      <if test="status != null">r.status=#{status}</if>
+      <if test="beforeId != null">AND r.id &lt; #{beforeId}</if>
+    </where>
+    ORDER BY r.id DESC LIMIT #{limit}
+  </select>
+  <select id="orders" resultType="map">
+    SELECT id,order_no,customer_id,status,channel,ordered_at,total_amount FROM sales_order
+    <where>
+      <if test="customerId != null">customer_id=#{customerId}</if>
+      <if test="status != null">AND status=#{status}</if>
+      <if test="beforeId != null">AND id &lt; #{beforeId}</if>
+    </where>
+    ORDER BY id DESC LIMIT #{limit}
+  </select>
+  <select id="order" resultType="map">
+    SELECT o.*,c.name customer_name,w.name warehouse_name
+    FROM sales_order o JOIN customer c ON c.id=o.customer_id JOIN warehouse w ON w.id=o.warehouse_id
+    WHERE o.id=#{id}
+  </select>
+  <select id="orderItems" resultType="map">
+    SELECT i.*,s.code sku_code,p.name product_name FROM sales_order_item i
+    JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id
+    WHERE i.order_id=#{orderId} ORDER BY i.id
+  </select>
+  <select id="products" resultType="map">
+    SELECT p.id,p.name,p.status,c.name category_name,b.name brand_name
+    FROM product p JOIN category c ON c.id=p.category_id JOIN brand b ON b.id=p.brand_id
+    WHERE p.id &gt; #{afterId}
+    <if test="categoryId != null">AND p.category_id=#{categoryId}</if>
+    ORDER BY p.id LIMIT #{limit}
+  </select>
+  <select id="inventory" resultType="map">
+    SELECT iv.sku_id,s.code,s.price,iv.available_qty,iv.reserved_qty,iv.reorder_point
+    FROM inventory iv JOIN sku s ON s.id=iv.sku_id
+    WHERE iv.warehouse_id=#{warehouseId} AND iv.sku_id &gt; #{afterSkuId}
+    ORDER BY iv.sku_id LIMIT #{limit}
+  </select>
+  <select id="purchase" resultType="map">
+    SELECT po.*,s.name supplier_name,w.name warehouse_name
+    FROM purchase_order po JOIN supplier s ON s.id=po.supplier_id JOIN warehouse w ON w.id=po.warehouse_id
+    WHERE po.id=#{id}
+  </select>
+  <select id="purchaseItems" resultType="map">
+    SELECT pi.*,s.code sku_code FROM purchase_order_item pi JOIN sku s ON s.id=pi.sku_id
+    WHERE pi.purchase_order_id=#{id} ORDER BY pi.id
+  </select>
+  <select id="returnOrder" resultType="map">
+    SELECT r.*,o.order_no,c.name customer_name FROM return_order r
+    JOIN sales_order o ON o.id=r.order_id JOIN customer c ON c.id=r.customer_id WHERE r.id=#{id}
+  </select>
+  <select id="returnItems" resultType="map">
+    SELECT ri.*,i.sku_id,s.code sku_code FROM return_item ri JOIN sales_order_item i ON i.id=ri.order_item_id
+    JOIN sku s ON s.id=i.sku_id WHERE ri.return_order_id=#{id} ORDER BY ri.id
+  </select>
+</mapper>
