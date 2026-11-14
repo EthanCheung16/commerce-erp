@@ -61,11 +61,24 @@ public interface FinanceMapper {
     List<Map<String, Object>> paymentCheck(@Param("from") LocalDate from, @Param("until") LocalDate until);
 
     @Select("""
+        WITH daily_receipts AS (
+            SELECT p.method,DATE(p.paid_at) paid_day,SUM(p.amount) amount
+            FROM payment p LEFT JOIN sales_order o ON o.id=p.order_id LEFT JOIN customer c ON c.id=o.customer_id
+            WHERE p.status='SUCCESS'
+            GROUP BY p.method,DATE(p.paid_at)
+            HAVING MIN(p.paid_at)>=#{from}
+        ), period_receipts AS (
+            SELECT p.id,p.method,p.transaction_no,p.paid_at,p.amount,
+              SUM(p.amount) OVER (PARTITION BY p.method,DATE(p.paid_at)
+                ORDER BY p.paid_at RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) day_amount
+            FROM payment p
+            WHERE p.status='SUCCESS' AND p.paid_at>=#{from} AND p.paid_at<#{until}
+        )
         SELECT p.id,p.transaction_no,p.paid_at,p.amount,
-          (SELECT SUM(x.amount) FROM payment x WHERE x.method=p.method AND x.status='SUCCESS'
-            AND x.paid_at>=#{from} AND x.paid_at<=p.paid_at) running_amount
-        FROM payment p
-        WHERE p.method=#{method} AND p.status='SUCCESS' AND p.paid_at>=#{from} AND p.paid_at<#{until}
+          p.day_amount+COALESCE((SELECT SUM(CASE WHEN d.paid_day<DATE(p.paid_at) THEN d.amount ELSE 0 END)
+            FROM daily_receipts d WHERE d.method=p.method
+              AND d.paid_day<=DATE(p.paid_at)),0) running_amount
+        FROM period_receipts p WHERE p.method=#{method}
         ORDER BY p.paid_at,p.id
         """)
     List<Map<String, Object>> paymentLedger(@Param("method") String method, @Param("from") LocalDate from,
@@ -113,12 +126,23 @@ public interface FinanceMapper {
     List<Map<String, Object>> settlementDetail(@Param("batchNo") String batchNo);
 
     @Select("""
+        WITH platform_orders AS (
+            SELECT o.id,o.platform_order_no,o.order_no,SUM(o.total_amount) total_amount
+            FROM sales_order o LEFT JOIN customer c ON c.id=o.customer_id
+            WHERE o.platform_order_no IS NOT NULL
+            GROUP BY o.id,o.platform_order_no,o.order_no
+        ), settlement_orders AS (
+            SELECT st.id settlement_id,o.id order_id,o.order_no,o.total_amount
+            FROM marketplace_settlement st JOIN platform_orders o ON o.platform_order_no=st.platform_order_no
+            WHERE st.batch_no BETWEEN #{fromBatch} AND #{toBatch}
+            GROUP BY st.id,o.id,o.order_no,o.total_amount
+        )
         SELECT st.id,st.batch_no,st.platform_order_no,st.settled_amount,st.commission,st.settled_at,
-          (SELECT o.order_no FROM sales_order o WHERE o.platform_order_no=st.platform_order_no) order_no,
-          (SELECT o.total_amount FROM sales_order o WHERE o.platform_order_no=st.platform_order_no) order_amount
+          (SELECT o.order_no FROM settlement_orders o WHERE o.settlement_id=st.id) order_no,
+          (SELECT o.total_amount FROM settlement_orders o WHERE o.settlement_id=st.id) order_amount
         FROM marketplace_settlement st
         WHERE st.batch_no BETWEEN #{fromBatch} AND #{toBatch}
-          AND st.settled_amount<>(SELECT o.total_amount FROM sales_order o WHERE o.platform_order_no=st.platform_order_no)
+          AND st.settled_amount<>(SELECT o.total_amount FROM settlement_orders o WHERE o.settlement_id=st.id)
         ORDER BY st.batch_no,st.id
         """)
     List<Map<String, Object>> settlementDifferences(@Param("fromBatch") String fromBatch,

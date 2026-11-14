@@ -76,12 +76,23 @@ public interface InventoryMapper {
             @Param("until") LocalDate until);
 
     @Select("""
+        WITH daily_movements AS (
+            SELECT m.warehouse_id,DATE(m.occurred_at) movement_day,SUM(m.quantity) quantity
+            FROM stock_movement m LEFT JOIN sku s ON s.id=m.sku_id LEFT JOIN product p ON p.id=s.product_id
+            GROUP BY m.warehouse_id,DATE(m.occurred_at)
+            HAVING MIN(m.occurred_at)>=#{from}
+        ), period_movements AS (
+            SELECT m.id,m.warehouse_id,m.occurred_at,m.movement_type,m.sku_id,m.quantity,m.reference_no,
+              SUM(m.quantity) OVER (PARTITION BY m.warehouse_id,DATE(m.occurred_at)
+                ORDER BY m.occurred_at,m.id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) day_quantity
+            FROM stock_movement m
+            WHERE m.occurred_at>=#{from} AND m.occurred_at<#{until}
+        )
         SELECT m.id,m.occurred_at,m.movement_type,m.sku_id,m.quantity,m.reference_no,
-          (SELECT SUM(b.quantity) FROM stock_movement b
-            WHERE b.warehouse_id=m.warehouse_id AND b.occurred_at>=#{from}
-              AND (b.occurred_at<m.occurred_at OR (b.occurred_at=m.occurred_at AND b.id<=m.id))) running_balance
-        FROM stock_movement m
-        WHERE m.warehouse_id=#{warehouseId} AND m.occurred_at>=#{from} AND m.occurred_at<#{until}
+          m.day_quantity+COALESCE((SELECT SUM(d.quantity) FROM daily_movements d
+            WHERE d.warehouse_id=m.warehouse_id
+              AND d.movement_day<DATE(m.occurred_at)),0) running_balance
+        FROM period_movements m WHERE m.warehouse_id=#{warehouseId}
         ORDER BY m.occurred_at,m.id
         """)
     List<Map<String, Object>> ledger(@Param("warehouseId") long warehouseId, @Param("from") LocalDate from,
