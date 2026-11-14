@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.commerce.logistics.LogisticsMapper">
+  <select id="byTrackingNo" resultType="map">
+    SELECT s.id,s.tracking_no,s.carrier,s.status,s.shipped_at,s.delivered_at,o.order_no,e.event_type,e.occurred_at,e.location
+    FROM shipment s JOIN sales_order o ON o.id=s.order_id LEFT JOIN shipment_event e ON e.shipment_id=s.id
+    WHERE s.tracking_no=#{trackingNo}
+    ORDER BY e.occurred_at,e.id
+  </select>
+
+  <select id="search" resultType="map"><![CDATA[
+    SELECT s.id,s.tracking_no,s.carrier,s.status,s.shipped_at,s.delivered_at,o.order_no,o.customer_id
+    FROM shipment s JOIN sales_order o ON o.id=s.order_id
+    WHERE s.tracking_no LIKE CONCAT('%',#{keyword},'%') OR o.order_no LIKE CONCAT('%',#{keyword},'%')
+    ORDER BY s.shipped_at DESC,s.id DESC LIMIT 20
+  ]]></select>
+
+  <select id="shipmentPage" resultType="map"><![CDATA[
+    SELECT s.id,s.tracking_no,s.carrier,s.status,s.shipped_at,o.order_no,c.name customer_name
+    FROM shipment s JOIN sales_order o ON o.id=s.order_id JOIN customer c ON c.id=o.customer_id
+    ORDER BY s.shipped_at DESC,s.id DESC LIMIT #{offset},#{size}
+  ]]></select>
+
+  <select id="customerShipments" resultType="map"><![CDATA[
+    SELECT s.id,s.tracking_no,s.carrier,s.status,o.order_no,s.shipped_at,s.delivered_at,
+      TIMESTAMPDIFF(HOUR,s.shipped_at,s.delivered_at) delivery_hours,
+      (SELECT COUNT(*) FROM shipment_event e WHERE e.shipment_id=s.id) event_count
+    FROM shipment s JOIN sales_order o ON o.id=s.order_id
+    WHERE o.customer_id=#{customerId}
+       OR o.address_id IN (SELECT a.id FROM customer_address a WHERE a.customer_id=#{customerId})
+    ORDER BY s.shipped_at DESC,s.id DESC
+  ]]></select>
+
+  <select id="customerTracking" resultType="map"><![CDATA[
+    SELECT x.shipment_id,x.tracking_no,o.order_no,x.event_type,x.occurred_at,x.location
+    FROM (SELECT e.shipment_id,s.tracking_no,s.order_id,e.event_type,e.occurred_at,e.location,
+            ROW_NUMBER() OVER (PARTITION BY e.shipment_id ORDER BY e.occurred_at DESC,e.id DESC) rn
+          FROM shipment_event e JOIN shipment s ON s.id=e.shipment_id) x
+    JOIN sales_order o ON o.id=x.order_id
+    WHERE x.rn=1 AND o.customer_id=#{customerId}
+    ORDER BY x.occurred_at DESC,x.shipment_id DESC
+  ]]></select>
+
+  <select id="overdueDeliveries" resultType="map"><![CDATA[
+    SELECT s.id,s.tracking_no,s.carrier,s.warehouse_id,o.order_no,o.ordered_at,s.delivered_at,
+      TIMESTAMPDIFF(HOUR,o.ordered_at,s.delivered_at) total_hours
+    FROM shipment s JOIN sales_order o ON o.id=s.order_id
+    WHERE TIMESTAMPDIFF(HOUR,o.ordered_at,s.delivered_at)>#{hours}
+    ORDER BY total_hours DESC,s.id LIMIT 100
+  ]]></select>
+
+  <select id="daily" resultType="map"><![CDATA[
+    WITH RECURSIVE days(d) AS (
+      SELECT DATE(#{from}) UNION ALL SELECT d+INTERVAL 1 DAY FROM days WHERE d+INTERVAL 1 DAY<DATE(#{until}))
+    SELECT d.d day,
+      (SELECT COUNT(*) FROM shipment s WHERE DATE(s.shipped_at)=d.d) shipped_count,
+      (SELECT COUNT(*) FROM shipment s WHERE DATE(s.delivered_at)=d.d) delivered_count,
+      (SELECT COUNT(*) FROM shipment_event e WHERE DATE(e.occurred_at)=d.d) event_count
+    FROM days d ORDER BY d.d
+  ]]></select>
+</mapper>

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.commerce.catalog.CatalogMapper">
+  <select id="products" resultType="map">
+    SELECT p.id,p.name,p.status,c.name category_name,b.name brand_name
+    FROM product p JOIN category c ON c.id=p.category_id JOIN brand b ON b.id=p.brand_id
+    WHERE p.id &gt; #{afterId}
+    <if test="categoryId != null">AND p.category_id=#{categoryId}</if>
+    ORDER BY p.id LIMIT #{limit}
+  </select>
+
+  <select id="productSearch" resultType="map"><![CDATA[
+    SELECT p.id,p.name,p.status,ca.name category_name,b.name brand_name,
+      (SELECT COUNT(*) FROM sku s WHERE s.product_id=p.id) sku_count,
+      (SELECT SUM(i.quantity) FROM sales_order_item i JOIN sku s ON s.id=i.sku_id WHERE s.product_id=p.id) sold_units
+    FROM product p JOIN category ca ON ca.id=p.category_id JOIN brand b ON b.id=p.brand_id
+    WHERE p.name LIKE CONCAT('%',#{keyword},'%')
+    ORDER BY sold_units DESC,p.id LIMIT 20
+  ]]></select>
+
+  <select id="offlineStock" resultType="map"><![CDATA[
+    SELECT p.id product_id,p.name product_name,s.id sku_id,s.code sku_code,iv.warehouse_id,iv.available_qty,
+      (SELECT MAX(i.created_at) FROM sales_order_item i WHERE i.sku_id=s.id) last_sold_at
+    FROM product p JOIN sku s ON s.product_id=p.id JOIN inventory iv ON iv.sku_id=s.id
+    WHERE p.status='OFFLINE' AND iv.available_qty>0
+    ORDER BY iv.available_qty DESC,s.id,iv.warehouse_id LIMIT 100
+  ]]></select>
+
+  <select id="brandBestSellers" resultType="map"><![CDATA[
+    SELECT p.id product_id,p.name product_name,x.units,x.revenue
+    FROM product p
+    JOIN (SELECT s.product_id,SUM(i.quantity) units,SUM(i.line_amount) revenue
+          FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+          WHERE o.status<>'CANCELLED' GROUP BY s.product_id) x ON x.product_id=p.id
+    WHERE p.brand_id=#{brandId}
+    ORDER BY x.units DESC,p.id LIMIT 20
+  ]]></select>
+
+  <select id="brandLatestPrices" resultType="map"><![CDATA[
+    SELECT x.sku_id,s.code sku_code,p.name product_name,s.price list_price,x.unit_price last_price,x.created_at last_sold_at
+    FROM (SELECT i.sku_id,i.unit_price,i.created_at,
+            ROW_NUMBER() OVER (PARTITION BY i.sku_id ORDER BY i.created_at DESC,i.id DESC) rn
+          FROM sales_order_item i) x
+    JOIN sku s ON s.id=x.sku_id JOIN product p ON p.id=s.product_id
+    WHERE x.rn=1 AND p.brand_id=#{brandId}
+    ORDER BY x.sku_id
+  ]]></select>
+
+  <select id="categoryReturnRates" resultType="map"><![CDATA[
+    SELECT s.id sku_id,s.code sku_code,x.sold_lines,y.returned_lines,ROUND(y.returned_lines/x.sold_lines,4) return_rate
+    FROM sku s JOIN product p ON p.id=s.product_id
+    JOIN (SELECT i.sku_id,COUNT(*) sold_lines FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+          WHERE o.status<>'CANCELLED' GROUP BY i.sku_id) x ON x.sku_id=s.id
+    JOIN (SELECT i.sku_id,COUNT(*) returned_lines FROM return_item ri JOIN sales_order_item i ON i.id=ri.order_item_id
+          GROUP BY i.sku_id) y ON y.sku_id=s.id
+    WHERE p.category_id=#{categoryId}
+    ORDER BY return_rate DESC,s.id LIMIT 30
+  ]]></select>
+
+  <select id="categoryFirstBuyers" resultType="map"><![CDATA[
+    SELECT x.sku_id,s.code sku_code,p.name product_name,x.customer_id,x.order_no,x.first_bought_at
+    FROM (SELECT o.customer_id,i.sku_id,o.ordered_at first_bought_at,o.order_no,
+            ROW_NUMBER() OVER (PARTITION BY i.sku_id ORDER BY o.ordered_at,i.id) rn
+          FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id) x
+    JOIN sku s ON s.id=x.sku_id JOIN product p ON p.id=s.product_id
+    WHERE x.rn=1 AND p.category_id=#{categoryId}
+    ORDER BY x.first_bought_at,x.sku_id
+  ]]></select>
+
+  <select id="promotions" resultType="map"><![CDATA[
+    SELECT pr.id,pr.code,pr.name,pr.discount_rate,pr.starts_at,pr.ends_at,pr.status,
+      (SELECT COUNT(*) FROM sales_order_item i WHERE i.promotion_code=pr.code) line_count,
+      (SELECT COALESCE(SUM(i.discount_amount),0) FROM sales_order_item i WHERE i.promotion_code=pr.code) discount_amount
+    FROM promotion pr WHERE pr.status=#{status}
+    ORDER BY pr.starts_at DESC,pr.id
+  ]]></select>
+
+  <select id="promotionDaily" resultType="map"><![CDATA[
+    WITH RECURSIVE days(d) AS (
+      SELECT DATE(#{from}) UNION ALL SELECT d+INTERVAL 1 DAY FROM days WHERE d+INTERVAL 1 DAY<DATE(#{until}))
+    SELECT d.d day,
+      (SELECT COALESCE(SUM(i.quantity),0) FROM sales_order_item i
+        WHERE i.promotion_code=#{code} AND DATE(i.created_at)=d.d) units
+    FROM days d ORDER BY d.d
+  ]]></select>
+
+  <select id="couponThresholds" resultType="map"><![CDATA[
+    SELECT cp.id,cp.code,cp.minimum_amount,cp.discount_amount,cp.valid_until,
+      (SELECT COUNT(*) FROM sales_order o WHERE o.tenant_id=cp.tenant_id AND o.total_amount>=cp.minimum_amount
+        AND o.ordered_at>=#{from} AND o.ordered_at<#{until}) eligible_orders,
+      (SELECT COALESCE(SUM(o.total_amount),0) FROM sales_order o WHERE o.tenant_id=cp.tenant_id
+        AND o.total_amount>=cp.minimum_amount AND o.ordered_at>=#{from} AND o.ordered_at<#{until}) eligible_amount
+    FROM coupon cp WHERE cp.tenant_id=#{tenantId}
+    ORDER BY cp.minimum_amount,cp.id
+  ]]></select>
+</mapper>

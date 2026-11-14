@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.commerce.order.OrderMapper">
+  <select id="orders" resultType="map">
+    SELECT id,order_no,customer_id,status,channel,ordered_at,total_amount FROM sales_order
+    <where>
+      <if test="customerId != null">customer_id=#{customerId}</if>
+      <if test="status != null">AND status=#{status}</if>
+      <if test="beforeId != null">AND id &lt; #{beforeId}</if>
+    </where>
+    ORDER BY id DESC LIMIT #{limit}
+  </select>
+
+  <select id="order" resultType="map">
+    SELECT o.*,c.name customer_name,w.name warehouse_name
+    FROM sales_order o JOIN customer c ON c.id=o.customer_id JOIN warehouse w ON w.id=o.warehouse_id
+    WHERE o.id=#{id}
+  </select>
+
+  <select id="orderItems" resultType="map">
+    SELECT i.*,s.code sku_code,p.name product_name FROM sales_order_item i
+    JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id
+    WHERE i.order_id=#{orderId} ORDER BY i.id
+  </select>
+
+  <select id="orderByNo" resultType="map">
+    SELECT o.id,o.order_no,o.customer_id,c.name customer_name,o.status,o.channel,o.ordered_at,o.paid_at,o.total_amount
+    FROM sales_order o JOIN customer c ON c.id=o.customer_id
+    WHERE o.order_no=#{orderNo}
+  </select>
+
+  <select id="searchBySuffix" resultType="map"><![CDATA[
+    SELECT o.id,o.order_no,o.customer_id,c.name customer_name,o.status,o.channel,o.ordered_at,o.total_amount
+    FROM sales_order o JOIN customer c ON c.id=o.customer_id
+    WHERE o.order_no LIKE CONCAT('%',#{suffix})
+    ORDER BY o.ordered_at DESC,o.id DESC LIMIT 20
+  ]]></select>
+
+  <select id="searchByRemark" resultType="map"><![CDATA[
+    SELECT o.id,o.order_no,o.customer_id,o.status,o.ordered_at,o.total_amount,o.remark
+    FROM sales_order o
+    WHERE o.status IN ('PENDING','PAID','SHIPPED') AND o.remark LIKE CONCAT('%',#{keyword},'%')
+    ORDER BY o.ordered_at DESC,o.id DESC LIMIT 50
+  ]]></select>
+
+  <select id="quickSearch" resultType="map"><![CDATA[
+    SELECT o.id,o.order_no,o.status,o.ordered_at,o.total_amount,c.name customer_name,c.phone
+    FROM sales_order o JOIN customer c ON c.id=o.customer_id
+    WHERE o.order_no LIKE CONCAT('%',#{keyword},'%') OR o.remark LIKE CONCAT('%',#{keyword},'%')
+       OR c.name LIKE CONCAT('%',#{keyword},'%') OR c.phone LIKE CONCAT('%',#{keyword},'%')
+    ORDER BY o.ordered_at DESC,o.id DESC LIMIT 20
+  ]]></select>
+
+  <select id="advancedSearch" resultType="map"><![CDATA[
+    SELECT o.id,o.order_no,o.status,o.ordered_at,o.total_amount,c.name customer_name,c.phone,a.city,a.street
+    FROM sales_order o JOIN customer c ON c.id=o.customer_id JOIN customer_address a ON a.id=o.address_id
+    WHERE o.order_no LIKE CONCAT('%',#{keyword},'%') OR o.remark LIKE CONCAT('%',#{keyword},'%')
+       OR c.name LIKE CONCAT('%',#{keyword},'%') OR c.phone LIKE CONCAT('%',#{keyword},'%')
+       OR a.street LIKE CONCAT('%',#{keyword},'%')
+    ORDER BY o.total_amount DESC,o.id LIMIT 20
+  ]]></select>
+
+  <select id="ordersByProductName" resultType="map"><![CDATA[
+    SELECT DISTINCT o.id,o.order_no,o.customer_id,o.status,o.ordered_at,o.total_amount
+    FROM sales_order o JOIN sales_order_item i ON i.order_id=o.id JOIN sku s ON s.id=i.sku_id
+    JOIN product p ON p.id=s.product_id
+    WHERE p.name LIKE CONCAT('%',#{keyword},'%')
+    ORDER BY o.total_amount DESC,o.id LIMIT 50
+  ]]></select>
+
+  <select id="orderPage" resultType="map"><![CDATA[
+    SELECT o.id,o.order_no,o.status,o.channel,o.ordered_at,o.total_amount,c.name customer_name,a.city,w.name warehouse_name
+    FROM sales_order o JOIN customer c ON c.id=o.customer_id JOIN customer_address a ON a.id=o.address_id
+    JOIN warehouse w ON w.id=o.warehouse_id
+    ORDER BY o.ordered_at DESC,o.id DESC LIMIT #{offset},#{size}
+  ]]></select>
+
+  <select id="orderPageByAmount" resultType="map"><![CDATA[
+    SELECT o.id,o.order_no,o.customer_id,c.name customer_name,o.status,o.ordered_at,o.total_amount
+    FROM sales_order o JOIN customer c ON c.id=o.customer_id
+    ORDER BY o.total_amount DESC,o.id LIMIT #{offset},#{size}
+  ]]></select>
+
+  <select id="countOrders" resultType="map"><![CDATA[
+    SELECT COUNT(*) order_count
+    FROM sales_order o JOIN customer c ON c.id=o.customer_id JOIN customer_address a ON a.id=o.address_id
+    JOIN warehouse w ON w.id=o.warehouse_id
+    WHERE o.ordered_at>=#{from} AND o.ordered_at<#{until}
+  ]]></select>
+
+  <select id="exportOrders" resultType="map"><![CDATA[
+    SELECT o.id,o.order_no,o.status,o.ordered_at,o.total_amount,MAX(c.name) customer_name,MAX(a.city) city,
+      MAX(w.name) warehouse_name,MAX(p.transaction_no) transaction_no,MAX(sh.tracking_no) tracking_no,
+      COUNT(DISTINCT i.id) line_count,COUNT(DISTINCT r.id) return_count
+    FROM sales_order o JOIN customer c ON c.id=o.customer_id JOIN customer_address a ON a.id=o.address_id
+    JOIN warehouse w ON w.id=o.warehouse_id
+    LEFT JOIN payment p ON p.order_id=o.id LEFT JOIN shipment sh ON sh.order_id=o.id
+    LEFT JOIN sales_order_item i ON i.order_id=o.id LEFT JOIN return_order r ON r.order_id=o.id
+    WHERE o.ordered_at>=#{from} AND o.ordered_at<#{until}
+    GROUP BY o.id,o.order_no,o.status,o.ordered_at,o.total_amount
+    ORDER BY o.ordered_at,o.id
+  ]]></select>
+
+  <select id="duplicateOrders" resultType="map"><![CDATA[
+    SELECT a.customer_id,a.id first_order_id,a.order_no first_order_no,a.ordered_at first_ordered_at,
+      b.id second_order_id,b.order_no second_order_no,b.ordered_at second_ordered_at,a.total_amount
+    FROM sales_order a JOIN sales_order b ON b.customer_id=a.customer_id AND b.id>a.id
+      AND ABS(TIMESTAMPDIFF(HOUR,a.ordered_at,b.ordered_at))<=#{hours}
+    WHERE a.ordered_at>=#{from} AND a.ordered_at<#{until}
+    ORDER BY a.ordered_at,a.id,b.id
+  ]]></select>
+
+  <select id="amountCheck" resultType="map"><![CDATA[
+    SELECT o.id,o.order_no,o.ordered_at,o.total_amount,o.discount_amount,o.shipping_fee,x.line_count,x.item_amount,
+      x.item_amount-o.discount_amount+o.shipping_fee-o.total_amount difference
+    FROM sales_order o
+    JOIN (SELECT order_id,COUNT(*) line_count,SUM(line_amount) item_amount FROM sales_order_item GROUP BY order_id) x
+      ON x.order_id=o.id
+    WHERE o.customer_id=#{customerId}
+    ORDER BY o.ordered_at DESC,o.id DESC
+  ]]></select>
+
+  <select id="promotionOrders" resultType="map"><![CDATA[
+    SELECT o.id,o.order_no,o.customer_id,o.ordered_at,COUNT(*) line_count,SUM(i.quantity) units,
+      SUM(i.discount_amount) discount_amount
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+    WHERE i.promotion_code=#{code} AND i.created_at>=#{from} AND i.created_at<#{until}
+    GROUP BY o.id,o.order_no,o.customer_id,o.ordered_at
+    ORDER BY o.ordered_at DESC,o.id DESC LIMIT 100
+  ]]></select>
+
+  <select id="itemPage" resultType="map"><![CDATA[
+    SELECT i.id,o.order_no,o.ordered_at,s.code sku_code,p.name product_name,i.quantity,i.unit_price,i.line_amount
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    JOIN product p ON p.id=s.product_id
+    ORDER BY i.created_at DESC,i.id DESC LIMIT #{offset},#{size}
+  ]]></select>
+
+  <select id="orderCalendar" resultType="map"><![CDATA[
+    WITH RECURSIVE days(d) AS (
+      SELECT DATE(#{from}) UNION ALL SELECT d+INTERVAL 1 DAY FROM days WHERE d+INTERVAL 1 DAY<DATE(#{until}))
+    SELECT d.d day,
+      (SELECT COUNT(*) FROM sales_order o WHERE DATE(o.ordered_at)=d.d) order_count,
+      (SELECT COUNT(*) FROM sales_order o WHERE DATE(o.paid_at)=d.d) paid_count,
+      (SELECT COUNT(*) FROM sales_order o WHERE o.status='CANCELLED' AND DATE(o.ordered_at)=d.d) cancelled_count
+    FROM days d ORDER BY d.d
+  ]]></select>
+
+  <select id="customerMargins" resultType="map"><![CDATA[
+    SELECT o.id order_id,MAX(o.order_no) order_no,MAX(o.ordered_at) ordered_at,SUM(i.line_amount) revenue,
+      SUM(s.cost*i.quantity) cost,SUM(i.line_amount-s.cost*i.quantity) margin
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    GROUP BY o.id HAVING MAX(o.customer_id)=#{customerId}
+    ORDER BY ordered_at DESC,order_id DESC
+  ]]></select>
+
+  <select id="amountAnomalies" resultType="map"><![CDATA[
+    SELECT o.id,o.order_no,o.customer_id,o.ordered_at,o.total_amount,
+      (SELECT AVG(x.total_amount) FROM sales_order x WHERE x.customer_id=o.customer_id) customer_average
+    FROM sales_order o
+    WHERE o.ordered_at>=#{from} AND o.ordered_at<#{until}
+      AND o.total_amount>#{ratio}*(SELECT AVG(x.total_amount) FROM sales_order x WHERE x.customer_id=o.customer_id)
+    ORDER BY o.ordered_at,o.id
+  ]]></select>
+
+  <select id="tenantLedger" resultType="map"><![CDATA[
+    SELECT o.id,o.order_no,o.ordered_at,o.status,o.total_amount,
+      (SELECT SUM(x.total_amount) FROM sales_order x
+        WHERE x.tenant_id=o.tenant_id AND x.ordered_at>=#{from} AND x.ordered_at<=o.ordered_at) cumulative_amount
+    FROM sales_order o
+    WHERE o.tenant_id=#{tenantId} AND o.ordered_at>=#{from} AND o.ordered_at<#{until}
+    ORDER BY o.ordered_at,o.id
+  ]]></select>
+</mapper>

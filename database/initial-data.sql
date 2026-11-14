@@ -30,9 +30,10 @@ INSERT INTO sku (id,product_id,code,specification,price,cost,weight_grams) SELEC
 
 INSERT INTO inventory (id,warehouse_id,sku_id,available_qty,reserved_qty,reorder_point,updated_at) SELECT n,1+FLOOR((n-1)/12000),1+MOD(n-1,12000),50+MOD(n*17,450),MOD(n,30),30,TIMESTAMPADD(DAY,MOD(n,365),'2025-01-01') FROM import_sequence WHERE n<=48000;
 
-INSERT INTO sales_order (id,order_no,tenant_id,customer_id,address_id,warehouse_id,status,channel,ordered_at,paid_at,discount_amount,shipping_fee,remark) SELECT n,CONCAT('SO2025',LPAD(n,9,'0')),1+MOD(customer_no-1,8),customer_no,customer_no,1+MOD(n,4),
+INSERT INTO sales_order (id,order_no,tenant_id,customer_id,address_id,warehouse_id,status,channel,platform_order_no,ordered_at,paid_at,discount_amount,shipping_fee,remark) SELECT n,CONCAT('SO2025',LPAD(n,9,'0')),1+MOD(customer_no-1,8),customer_no,customer_no,1+MOD(n,4),
 ELT(1+MOD(n,6),'PENDING','PAID','SHIPPED','COMPLETED','CANCELLED','REFUNDING'),
 ELT(1+MOD(FLOOR(n/7),4),'WEB','APP','MARKETPLACE','STORE'),
+IF(MOD(FLOOR(n/7),4)=2,CONCAT('6',LPAD(n*7,11,'0')),NULL),
 TIMESTAMPADD(SECOND,MOD(n*7919,31536000),'2025-01-01'),
 IF(MOD(n,6) IN (0,4),NULL,TIMESTAMPADD(SECOND,MOD(n*7919,31536000)+600,'2025-01-01')),
 MOD(n,50),IF(MOD(n,3)=0,0,8),CONCAT('订单配送备注-',n,'；工作日优先配送') FROM (SELECT n,IF(MOD(n,10)<7,1+MOD(n*37,2000),1+MOD(n*37,20000)) customer_no FROM import_sequence WHERE n<=120000) x;
@@ -52,16 +53,20 @@ IF(MOD(n,7)=0,NULL,TIMESTAMPADD(DAY,2+MOD(n,7),o.ordered_at)),5+MOD(n,12) FROM i
 
 INSERT INTO shipment_event (id,shipment_id,event_type,occurred_at,location) SELECT n,s.id,IF(n<=50000,'PICKED_UP','IN_TRANSIT'),TIMESTAMPADD(HOUR,FLOOR((n-1)/50000)*8,s.shipped_at),CONCAT('转运中心-',MOD(n,100)) FROM import_sequence z JOIN shipment s ON s.id=1+MOD(n-1,50000) WHERE n<=60000;
 
-INSERT INTO purchase_order (id,supplier_id,warehouse_id,status,ordered_at,expected_at) SELECT n,1+MOD(n,200),1+MOD(n,4),ELT(1+MOD(n,3),'ORDERED','RECEIVED','PARTIAL'),TIMESTAMPADD(DAY,MOD(n,365),'2025-01-01'),TIMESTAMPADD(DAY,7+MOD(n,365),'2025-01-01') FROM import_sequence WHERE n<=5000;
+INSERT INTO purchase_order (id,po_no,supplier_id,warehouse_id,status,ordered_at,expected_at) SELECT n,CONCAT('PO-',LPAD(n,6,'0')),1+MOD(n,200),1+MOD(n,4),ELT(1+MOD(n,3),'ORDERED','RECEIVED','PARTIAL'),TIMESTAMPADD(DAY,MOD(n,365),'2025-01-01'),TIMESTAMPADD(DAY,7+MOD(n,365),'2025-01-01') FROM import_sequence WHERE n<=5000;
 
 INSERT INTO purchase_order_item (id,purchase_order_id,sku_id,quantity,received_qty,unit_cost) SELECT n,1+FLOOR((n-1)/3),1+MOD(n*7919,12000),100+MOD(n,200),LEAST(100+MOD(n,200),50+MOD(n,250)),5+MOD(n*19,400) FROM import_sequence WHERE n<=15000;
 
-INSERT INTO return_order (id,order_id,customer_id,reason,status,requested_at,refund_amount) SELECT n,o.id,o.customer_id,ELT(1+MOD(n,4),'DAMAGED','WRONG_ITEM','NO_LONGER_NEEDED','LATE_DELIVERY'),
+INSERT INTO return_order (id,return_no,order_id,customer_id,reason,status,requested_at,refund_amount) SELECT n,CONCAT('RT-',LPAD(n,6,'0')),o.id,o.customer_id,ELT(1+MOD(n,4),'DAMAGED','WRONG_ITEM','NO_LONGER_NEEDED','LATE_DELIVERY'),
 ELT(1+MOD(n,3),'REQUESTED','APPROVED','REFUNDED'),TIMESTAMPADD(DAY,10,o.ordered_at),LEAST(20+MOD(n,400),o.total_amount) FROM import_sequence z JOIN sales_order o ON o.id=n*6-1 WHERE n<=8000;
 
 INSERT INTO return_item (id,return_order_id,order_item_id,quantity,disposition) SELECT n,r.id,(r.order_id-1)*3+1+FLOOR((n-1)/8000),1,IF(MOD(n,5)=0,'SCRAP','RESTOCK') FROM import_sequence z JOIN return_order r ON r.id=1+MOD(n-1,8000) WHERE n<=12000;
 
-INSERT INTO stock_movement (id,warehouse_id,sku_id,movement_type,quantity,occurred_at,reference_no) SELECT n,1+MOD(n,4),1+MOD(n*7919,12000),ELT(1+MOD(n,4),'PURCHASE','SALE','RETURN','ADJUSTMENT'),IF(MOD(n,4)=1,-1,1)*(1+MOD(n,30)),TIMESTAMPADD(SECOND,MOD(n*7919,31536000),'2025-01-01'),CONCAT('STK-',n) FROM import_sequence WHERE n<=100000;
+INSERT INTO stock_movement (id,warehouse_id,sku_id,movement_type,quantity,occurred_at,reference_no) SELECT z.n,
+IF(MOD(z.n,4)=1,o.warehouse_id,1+MOD(z.n,4)),IF(MOD(z.n,4)=1,i.sku_id,1+MOD(z.n*7919,12000)),ELT(1+MOD(z.n,4),'PURCHASE','SALE','RETURN','ADJUSTMENT'),
+IF(MOD(z.n,4)=1,-i.quantity,1+MOD(z.n,30)),IF(MOD(z.n,4)=1,TIMESTAMPADD(HOUR,20,o.ordered_at),TIMESTAMPADD(SECOND,MOD(z.n*7919,31536000),'2025-01-01')),
+CASE MOD(z.n,4) WHEN 1 THEN o.order_no WHEN 0 THEN CONCAT('PO-',LPAD(1+MOD(z.n,5000),6,'0')) WHEN 2 THEN CONCAT('RT-',LPAD(1+MOD(z.n,8000),6,'0')) ELSE CONCAT('ADJ-',LPAD(z.n,7,'0')) END
+FROM import_sequence z LEFT JOIN sales_order_item i ON MOD(z.n,4)=1 AND i.id=1+MOD(z.n*7,360000) LEFT JOIN sales_order o ON o.id=i.order_id WHERE z.n<=100000;
 
 INSERT INTO coupon (id,tenant_id,code,minimum_amount,discount_amount,valid_until) SELECT n,1+MOD(n-1,8),CONCAT('COUPON-',n),100+MOD(n,500),5+MOD(n,50),'2026-01-01' FROM import_sequence WHERE n<=300;
 
@@ -73,8 +78,13 @@ INSERT INTO shopping_cart (id,customer_id,updated_at) SELECT n,n,TIMESTAMPADD(DA
 
 INSERT INTO shopping_cart_item (id,cart_id,sku_id,quantity,added_at) SELECT n,1+FLOOR((n-1)/2),1+MOD(n*7919,12000),1+MOD(n,3),TIMESTAMPADD(DAY,MOD(n,365),'2025-01-01') FROM import_sequence WHERE n<=20000;
 
+INSERT INTO promotion (id,tenant_id,code,name,discount_rate,starts_at,ends_at,status) SELECT n,1+MOD(n-1,8),CONCAT('PROMO-',n-1),CONCAT('促销活动-',n-1),ELT(1+MOD(n-1,4),0.95,0.90,0.85,0.80),TIMESTAMPADD(DAY,MOD((n-1)*11,300),'2025-01-01'),TIMESTAMPADD(DAY,MOD((n-1)*11,300)+60,'2025-01-01'),IF(MOD(n-1,3)=0,'ACTIVE','ENDED') FROM import_sequence WHERE n<=30;
+
+INSERT INTO marketplace_settlement (id,batch_no,platform_order_no,settled_amount,commission,settled_at) SELECT ROW_NUMBER() OVER (ORDER BY o.id),CONCAT('ST',DATE_FORMAT(TIMESTAMPADD(DAY,3,o.ordered_at),'%Y%m%d')),CAST(o.platform_order_no AS UNSIGNED),
+IF(MOD(o.id,23)=0,o.total_amount-ROUND(o.total_amount*0.01,2),o.total_amount),ROUND(o.total_amount*0.05,2),TIMESTAMPADD(DAY,3,o.ordered_at) FROM sales_order o WHERE o.platform_order_no IS NOT NULL AND o.status IN ('PAID','SHIPPED','COMPLETED');
+
 COMMIT;
 
-ANALYZE TABLE tenant,category,brand,supplier,warehouse,customer,customer_address,product,sku,inventory,sales_order,sales_order_item,payment,shipment,shipment_event,purchase_order,purchase_order_item,return_order,return_item,stock_movement,coupon,customer_coupon,product_review,shopping_cart,shopping_cart_item;
+ANALYZE TABLE tenant,category,brand,supplier,warehouse,customer,customer_address,product,sku,inventory,sales_order,sales_order_item,payment,shipment,shipment_event,purchase_order,purchase_order_item,return_order,return_item,stock_movement,coupon,customer_coupon,product_review,shopping_cart,shopping_cart_item,promotion,marketplace_settlement;
 
 DROP TEMPORARY TABLE import_sequence;

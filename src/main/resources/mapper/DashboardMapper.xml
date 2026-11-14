@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.commerce.dashboard.DashboardMapper">
+  <select id="orderStatusCounts" resultType="map">
+    SELECT status,COUNT(*) order_count FROM sales_order GROUP BY status
+  </select>
+
+  <select id="receivedAmount" resultType="java.math.BigDecimal">
+    SELECT COALESCE(SUM(amount),0) FROM payment WHERE status='SUCCESS'
+  </select>
+
+  <select id="inventorySummary" resultType="map">
+    SELECT COALESCE(SUM(available_qty),0) available_qty,
+      COALESCE(SUM(available_qty &lt;= reorder_point),0) low_stock_count,
+      (SELECT COUNT(*) FROM sku) sku_count FROM inventory
+  </select>
+
+  <select id="channelBoard" resultType="map"><![CDATA[
+    SELECT ch.channel,
+      (SELECT COUNT(*) FROM sales_order o WHERE o.channel=ch.channel AND o.ordered_at>=#{from} AND o.ordered_at<#{until}) order_count,
+      (SELECT SUM(o.total_amount) FROM sales_order o
+        WHERE o.channel=ch.channel AND o.ordered_at>=#{from} AND o.ordered_at<#{until}) order_amount,
+      (SELECT COUNT(DISTINCT o.customer_id) FROM sales_order o
+        WHERE o.channel=ch.channel AND o.ordered_at>=#{from} AND o.ordered_at<#{until}) customer_count,
+      (SELECT SUM(i.quantity) FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+        WHERE o.channel=ch.channel AND o.ordered_at>=#{from} AND o.ordered_at<#{until}) units
+    FROM (SELECT 'WEB' channel UNION ALL SELECT 'APP' UNION ALL SELECT 'MARKETPLACE' UNION ALL SELECT 'STORE') ch
+  ]]></select>
+</mapper>

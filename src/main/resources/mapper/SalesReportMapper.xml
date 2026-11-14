@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.commerce.report.SalesReportMapper">
+  <select id="merchantDailySales" resultType="map"><![CDATA[
+    SELECT DATE_FORMAT(i.created_at,'%Y-%m-%d') sale_date,o.channel,COUNT(DISTINCT o.id) order_count,
+      SUM(i.quantity) units,SUM(i.line_amount) revenue
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+    WHERE o.tenant_id=#{tenantId}
+      AND DATE_FORMAT(i.created_at,'%Y-%m-%d')>=DATE_FORMAT(#{from},'%Y-%m-%d')
+      AND DATE_FORMAT(i.created_at,'%Y-%m-%d')<DATE_FORMAT(#{until},'%Y-%m-%d')
+    GROUP BY sale_date,o.channel ORDER BY sale_date,o.channel
+  ]]></select>
+
+  <select id="merchantCategoryAnnual" resultType="map"><![CDATA[
+    SELECT ca.name category_name,o.status,COUNT(*) line_count,SUM(i.quantity) units,SUM(i.line_amount) revenue
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    JOIN product p ON p.id=s.product_id JOIN category ca ON ca.id=p.category_id
+    WHERE o.tenant_id=#{tenantId} AND SUBSTRING(o.order_no,3,4)=CAST(YEAR(#{from}) AS CHAR) AND o.status<>'CANCELLED'
+    GROUP BY ca.id,ca.name,o.status ORDER BY revenue DESC,ca.id,o.status LIMIT 100
+  ]]></select>
+
+  <select id="channelPaymentReceipts" resultType="map"><![CDATA[
+    SELECT o.channel,COUNT(*) order_count,SUM(o.total_amount) order_value,
+      SUM((SELECT COUNT(*) FROM payment p WHERE p.order_id=o.id AND p.status='SUCCESS')) payment_count,
+      SUM((SELECT COALESCE(SUM(p.amount),0) FROM payment p WHERE p.order_id=o.id AND p.status='REFUNDED')) refunded_amount
+    FROM sales_order o
+    WHERE o.status IN ('PAID','SHIPPED','COMPLETED','REFUNDING') AND o.ordered_at>=#{from} AND o.ordered_at<#{until}
+    GROUP BY o.channel ORDER BY o.channel
+  ]]></select>
+
+  <select id="afterSalesCategorySales" resultType="map"><![CDATA[
+    SELECT ca.name category_name,COUNT(*) line_count,SUM(i.quantity) units,SUM(i.line_amount) revenue
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    JOIN product p ON p.id=s.product_id JOIN category ca ON ca.id=p.category_id
+    WHERE (o.status='REFUNDING' OR o.id IN (SELECT r.order_id FROM return_order r WHERE r.status IN ('REQUESTED','APPROVED')))
+      AND i.created_at>=#{from} AND i.created_at<#{until}
+    GROUP BY ca.id,ca.name ORDER BY revenue DESC,ca.id
+  ]]></select>
+
+  <select id="merchantOrderMargin" resultType="map"><![CDATA[
+    SELECT o.id order_id,MAX(o.order_no) order_no,MAX(o.ordered_at) ordered_at,SUM(i.line_amount) revenue,
+      SUM(s.cost*i.quantity) cost,SUM(i.line_amount-s.cost*i.quantity) margin
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    WHERE o.ordered_at>=#{from} AND o.ordered_at<#{until}
+    GROUP BY o.id HAVING MAX(o.tenant_id)=#{tenantId} AND MAX(o.status) IN ('PAID','SHIPPED','COMPLETED')
+    ORDER BY margin DESC,order_id LIMIT 50
+  ]]></select>
+
+  <select id="channelKpi" resultType="map"><![CDATA[
+    SELECT o.channel,'销售额' metric,SUM(i.line_amount) value
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+    WHERE i.created_at>=#{from} AND i.created_at<#{until} GROUP BY o.channel
+    UNION
+    SELECT o.channel,'销售件数',SUM(i.quantity)
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+    WHERE i.created_at>=#{from} AND i.created_at<#{until} GROUP BY o.channel
+    UNION
+    SELECT o.channel,'优惠金额',SUM(i.discount_amount)
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+    WHERE i.created_at>=#{from} AND i.created_at<#{until} GROUP BY o.channel
+    ORDER BY channel,metric
+  ]]></select>
+
+  <select id="offlineProductSales" resultType="map"><![CDATA[
+    SELECT s.id sku_id,s.code sku_code,p.name product_name,x.units,x.revenue,x.buyers
+    FROM sku s JOIN product p ON p.id=s.product_id
+    JOIN (SELECT i.sku_id,SUM(i.quantity) units,SUM(i.line_amount) revenue,COUNT(DISTINCT o.customer_id) buyers
+          FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+          WHERE i.created_at>=#{from} AND i.created_at<#{until} GROUP BY i.sku_id) x ON x.sku_id=s.id
+    WHERE p.status='OFFLINE' ORDER BY x.revenue DESC,s.id LIMIT 50
+  ]]></select>
+
+  <select id="premiumSkuBuyers" resultType="map"><![CDATA[
+    SELECT s.id sku_id,s.code sku_code,s.price,x.buyers,x.order_count,x.revenue
+    FROM sku s
+    JOIN (SELECT i.sku_id,COUNT(DISTINCT o.customer_id) buyers,COUNT(DISTINCT o.id) order_count,SUM(i.line_amount) revenue
+          FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+          WHERE i.created_at>=#{from} AND i.created_at<#{until} GROUP BY i.sku_id) x ON x.sku_id=s.id
+    WHERE s.price>800 ORDER BY x.buyers DESC,s.id LIMIT 50
+  ]]></select>
+
+  <select id="brandStockRiskSales" resultType="map"><![CDATA[
+    SELECT b.name brand_name,COUNT(*) line_count,SUM(i.quantity) units,SUM(i.line_amount) revenue
+    FROM sales_order_item i JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN brand b ON b.id=p.brand_id
+    WHERE (i.quantity>=3 OR i.sku_id IN (SELECT iv.sku_id FROM inventory iv WHERE iv.available_qty<80))
+      AND i.created_at>=#{from} AND i.created_at<#{until}
+    GROUP BY b.id,b.name ORDER BY revenue DESC,b.id LIMIT 50
+  ]]></select>
+
+  <select id="repeatBuyerProvince" resultType="map"><![CDATA[
+    SELECT c.province,COUNT(*) line_count,SUM(i.quantity) units,SUM(i.line_amount) revenue
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN customer c ON c.id=o.customer_id
+    WHERE (c.tier='PLATINUM' OR o.customer_id IN (
+            SELECT x.customer_id FROM sales_order x JOIN sales_order_item xi ON xi.order_id=x.id
+            GROUP BY x.customer_id HAVING COUNT(DISTINCT xi.sku_id)>10))
+      AND i.created_at>=#{from} AND i.created_at<#{until}
+    GROUP BY c.province ORDER BY revenue DESC,c.province
+  ]]></select>
+
+  <select id="categorySkuRank" resultType="map"><![CDATA[
+    SELECT ca.name category_name,s.code sku_code,p.name product_name,x.revenue,
+      (SELECT COUNT(*)+1 FROM (SELECT p2.category_id,SUM(i2.line_amount) revenue
+              FROM sales_order_item i2 JOIN sales_order o2 ON o2.id=i2.order_id JOIN sku s2 ON s2.id=i2.sku_id
+              JOIN product p2 ON p2.id=s2.product_id
+              WHERE o2.status<>'CANCELLED' AND i2.created_at>=#{from} AND i2.created_at<#{until}
+              GROUP BY i2.sku_id,p2.category_id) y
+        WHERE y.category_id=p.category_id AND y.revenue>x.revenue) category_rank
+    FROM (SELECT i.sku_id,SUM(i.line_amount) revenue FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+          WHERE o.status<>'CANCELLED' AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY i.sku_id) x
+    JOIN sku s ON s.id=x.sku_id JOIN product p ON p.id=s.product_id JOIN category ca ON ca.id=p.category_id
+    WHERE p.category_id=#{categoryId}
+    ORDER BY category_rank,s.id LIMIT 30
+  ]]></select>
+
+  <select id="categoryStatusSales" resultType="map"><![CDATA[
+    SELECT ca.name category_name,'待发货' order_status,SUM(i.line_amount) revenue
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    JOIN product p ON p.id=s.product_id JOIN category ca ON ca.id=p.category_id
+    WHERE o.status='PAID' AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY ca.id,ca.name
+    UNION
+    SELECT ca.name,'已发货',SUM(i.line_amount)
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    JOIN product p ON p.id=s.product_id JOIN category ca ON ca.id=p.category_id
+    WHERE o.status='SHIPPED' AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY ca.id,ca.name
+    UNION
+    SELECT ca.name,'已完成',SUM(i.line_amount)
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    JOIN product p ON p.id=s.product_id JOIN category ca ON ca.id=p.category_id
+    WHERE o.status='COMPLETED' AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY ca.id,ca.name
+    ORDER BY category_name,order_status
+  ]]></select>
+
+  <select id="supplierPriceBand" resultType="map"><![CDATA[
+    SELECT su.id supplier_id,su.name supplier_name,'300 元以下' price_band,SUM(i.line_amount) revenue
+    FROM sales_order_item i JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN supplier su ON su.id=p.supplier_id
+    WHERE i.unit_price<300 AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY su.id,su.name
+    UNION
+    SELECT su.id,su.name,'300 元及以上',SUM(i.line_amount)
+    FROM sales_order_item i JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN supplier su ON su.id=p.supplier_id
+    WHERE i.unit_price>=300 AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY su.id,su.name
+    ORDER BY revenue DESC,supplier_id,price_band LIMIT 60
+  ]]></select>
+
+  <select id="brandPurchaseBatches" resultType="map"><![CDATA[
+    SELECT b.name brand_name,COUNT(*) line_count,SUM(i.line_amount) revenue,
+      SUM((SELECT COUNT(*) FROM purchase_order_item pi WHERE pi.sku_id=i.sku_id)) purchase_batches
+    FROM sales_order_item i JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN brand b ON b.id=p.brand_id
+    WHERE i.created_at>=#{from} AND i.created_at<#{until}
+    GROUP BY b.id,b.name ORDER BY purchase_batches DESC,b.id LIMIT 50
+  ]]></select>
+
+  <select id="brandMargin" resultType="map"><![CDATA[
+    SELECT p.brand_id,'收入' metric,SUM(i.line_amount) value
+    FROM sales_order_item i JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id
+    WHERE i.fulfillment_status IN ('PACKED','SHIPPED') AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY p.brand_id
+    UNION
+    SELECT p.brand_id,'成本',SUM(s.cost*i.quantity)
+    FROM sales_order_item i JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id
+    WHERE i.fulfillment_status IN ('PACKED','SHIPPED') AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY p.brand_id
+    UNION
+    SELECT p.brand_id,'毛利',SUM(i.line_amount-s.cost*i.quantity)
+    FROM sales_order_item i JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id
+    WHERE i.fulfillment_status IN ('PACKED','SHIPPED') AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY p.brand_id
+    ORDER BY brand_id,metric
+  ]]></select>
+
+  <select id="monthlySales" resultType="map"><![CDATA[
+    SELECT DATE_FORMAT(i.created_at,'%Y-%m') month,COUNT(DISTINCT o.id) order_count,SUM(i.quantity) units,SUM(i.line_amount) revenue
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+    LEFT JOIN customer c ON c.id=o.customer_id
+    LEFT JOIN customer_address a ON a.id=o.address_id
+    LEFT JOIN warehouse w ON w.id=o.warehouse_id
+    LEFT JOIN tenant t ON t.id=o.tenant_id
+    LEFT JOIN sku s ON s.id=i.sku_id
+    LEFT JOIN product p ON p.id=s.product_id
+    LEFT JOIN category ca ON ca.id=p.category_id
+    LEFT JOIN brand b ON b.id=p.brand_id
+    LEFT JOIN supplier su ON su.id=p.supplier_id
+    LEFT JOIN shipment sh ON sh.order_id=o.id
+    WHERE o.status<>'CANCELLED' AND i.created_at>=#{from} AND i.created_at<#{until}
+    GROUP BY DATE_FORMAT(i.created_at,'%Y-%m') ORDER BY month
+  ]]></select>
+
+  <select id="categoryWeightBand" resultType="map"><![CDATA[
+    SELECT ca.name category_name,'轻件' weight_band,SUM(i.quantity) units
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    JOIN product p ON p.id=s.product_id JOIN category ca ON ca.id=p.category_id
+    WHERE s.weight_grams<1000 AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY ca.id,ca.name
+    UNION
+    SELECT ca.name,'中件',SUM(i.quantity)
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    JOIN product p ON p.id=s.product_id JOIN category ca ON ca.id=p.category_id
+    WHERE s.weight_grams>=1000 AND s.weight_grams<3000 AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY ca.id,ca.name
+    UNION
+    SELECT ca.name,'重件',SUM(i.quantity)
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    JOIN product p ON p.id=s.product_id JOIN category ca ON ca.id=p.category_id
+    WHERE s.weight_grams>=3000 AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY ca.id,ca.name
+    ORDER BY category_name,weight_band
+  ]]></select>
+
+  <select id="orderSequence" resultType="map"><![CDATA[
+    SELECT CASE WHEN x.seq=1 THEN '首单' WHEN x.seq=2 THEN '第二单' WHEN x.seq<=5 THEN '第三至五单' ELSE '第六单及以后' END order_sequence,
+      COUNT(*) order_count,SUM(x.total_amount) order_amount
+    FROM (SELECT o.id,o.total_amount,
+            (SELECT COUNT(*) FROM sales_order p WHERE p.customer_id=o.customer_id AND p.ordered_at<=o.ordered_at) seq
+          FROM sales_order o
+          WHERE o.status IN ('SHIPPED','COMPLETED') AND o.channel<>'STORE'
+            AND o.ordered_at>=#{from} AND o.ordered_at<#{until}) x
+    GROUP BY order_sequence ORDER BY MIN(x.seq)
+  ]]></select>
+
+  <select id="merchantQuarterSales" resultType="map"><![CDATA[
+    SELECT o.tenant_id,'第一季度' quarter_name,SUM(i.line_amount) revenue,SUM(i.quantity*s.weight_grams) weight_grams
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    WHERE QUARTER(i.created_at)=1 AND o.channel IN ('WEB','APP') AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY o.tenant_id
+    UNION
+    SELECT o.tenant_id,'第二季度',SUM(i.line_amount),SUM(i.quantity*s.weight_grams)
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    WHERE QUARTER(i.created_at)=2 AND o.channel IN ('WEB','APP') AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY o.tenant_id
+    UNION
+    SELECT o.tenant_id,'第三季度',SUM(i.line_amount),SUM(i.quantity*s.weight_grams)
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    WHERE QUARTER(i.created_at)=3 AND o.channel IN ('WEB','APP') AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY o.tenant_id
+    UNION
+    SELECT o.tenant_id,'第四季度',SUM(i.line_amount),SUM(i.quantity*s.weight_grams)
+    FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+    WHERE QUARTER(i.created_at)=4 AND o.channel IN ('WEB','APP') AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY o.tenant_id
+    ORDER BY tenant_id,quarter_name
+  ]]></select>
+</mapper>

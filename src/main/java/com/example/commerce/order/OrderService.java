@@ -1,4 +1,4 @@
-package com.example.commerce.business;
+package com.example.commerce.order;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -9,22 +9,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-public class BusinessService {
-    private final BusinessMapper mapper;
-    public BusinessService(BusinessMapper mapper) { this.mapper = mapper; }
+public class OrderService {
+    private final OrderMapper mapper;
+    public OrderService(OrderMapper mapper) { this.mapper = mapper; }
 
     public Map<String,Object> order(long id) {
-        return detail(mapper.order(id),mapper.orderItems(id));
-    }
-    public Map<String,Object> purchase(long id) {
-        return detail(mapper.purchase(id),mapper.purchaseItems(id));
-    }
-    public Map<String,Object> returnOrder(long id) {
-        return detail(mapper.returnOrder(id),mapper.returnItems(id));
-    }
-    private Map<String,Object> detail(Map<String,Object> header,List<Map<String,Object>> items) {
+        var header = mapper.order(id);
         if (header == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"记录不存在");
-        return Map.of("header",header,"items",items);
+        return Map.of("header",header,"items",mapper.orderItems(id));
     }
 
     @Transactional

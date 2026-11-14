@@ -19,7 +19,9 @@ public class ReportController {
     @GetMapping("/{code}")
     public List<Map<String, Object>> run(@PathVariable String code,
             @RequestParam(defaultValue = "2025-01-01") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(defaultValue = "2026-01-01") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate until) {
-        return service.run(code, ReportFilter.dates(from, until));
+            @RequestParam(defaultValue = "2026-01-01") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate until,
+            @RequestParam(defaultValue = "1") long tenantId,
+            @RequestParam(defaultValue = "5") long categoryId) {
+        return service.run(code, ReportFilter.of(from, until, tenantId, categoryId));
     }
 }

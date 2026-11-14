@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-@DependsOn({"xmlReportMapper", "annotationReportMapper"})
+@DependsOn({"salesReportMapper", "operationReportMapper"})
 public class ReportService {
     private final Map<String, ReportDefinition> catalog = new LinkedHashMap<>();
     private final SqlSessionTemplate sessions;

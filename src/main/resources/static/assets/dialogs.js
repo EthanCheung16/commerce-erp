@@ -20,8 +20,8 @@ export async function openDetail(type,id){
   const h=result.header;
   const field=(label,value)=>`<div class="detail-field"><span>${label}</span><strong>${value}</strong></div>`;
   const fields=type==='orders'?[['订单号',esc(h.order_no)],['订单状态',badge(h.status)],['订单金额',money(h.total_amount)],['客户',esc(h.customer_name)],['仓库',esc(h.warehouse_name)],['销售渠道',channel(h.channel)],['下单时间',date(h.ordered_at)],['订单优惠',money(h.discount_amount)],['运费',money(h.shipping_fee)]]:
-    type==='purchases'?[['采购单号',`PO-${String(id).padStart(6,'0')}`],['采购状态',badge(h.status)],['供应商',esc(h.supplier_name)],['收货仓库',esc(h.warehouse_name)],['采购时间',date(h.ordered_at)],['预计到货',date(h.expected_at)]]:
-    [['售后单号',`RT-${String(id).padStart(6,'0')}`],['处理状态',badge(h.status)],['退款金额',money(h.refund_amount)],['客户',esc(h.customer_name)],['关联订单',esc(h.order_no)],['申请原因',esc(reasons[h.reason]||h.reason)],['申请时间',date(h.requested_at)]];
+    type==='purchases'?[['采购单号',esc(h.po_no)],['采购状态',badge(h.status)],['供应商',esc(h.supplier_name)],['收货仓库',esc(h.warehouse_name)],['采购时间',date(h.ordered_at)],['预计到货',date(h.expected_at)]]:
+    [['售后单号',esc(h.return_no)],['处理状态',badge(h.status)],['退款金额',money(h.refund_amount)],['客户',esc(h.customer_name)],['关联订单',esc(h.order_no)],['申请原因',esc(reasons[h.reason]||h.reason)],['申请时间',date(h.requested_at)]];
   const columns=type==='orders'?[{label:'商品',render:r=>`<strong>${esc(r.product_name)}</strong><span class="cell-sub">${esc(r.sku_code)}</span>`},{label:'数量',align:'right',render:r=>number(r.quantity)},{label:'单价',align:'right',render:r=>money(r.unit_price)},{label:'小计',align:'right',render:r=>money(r.line_amount)},{label:'履约状态',render:r=>badge(r.fulfillment_status)}]:
    type==='purchases'?[{label:'SKU 编码',key:'sku_code'},{label:'采购数量',align:'right',render:r=>number(r.quantity)},{label:'已收数量',align:'right',render:r=>number(r.received_qty)},{label:'采购单价',align:'right',render:r=>money(r.unit_cost)}]:
    [{label:'SKU 编码',key:'sku_code'},{label:'原订单行',key:'order_item_id'},{label:'退回数量',align:'right',render:r=>number(r.quantity)},{label:'处理方式',render:r=>badge(r.disposition)}];

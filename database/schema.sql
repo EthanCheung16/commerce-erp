@@ -63,12 +63,12 @@ KEY idx_inventory_sku(sku_id), KEY idx_inventory_sku_availability(sku_id,availab
 CREATE TABLE IF NOT EXISTS sales_order (
 id BIGINT PRIMARY KEY AUTO_INCREMENT, order_no VARCHAR(40) NOT NULL UNIQUE, tenant_id BIGINT NOT NULL,
 customer_id BIGINT NOT NULL, address_id BIGINT NOT NULL, warehouse_id BIGINT NOT NULL,
-status VARCHAR(16) NOT NULL, channel VARCHAR(16) NOT NULL, ordered_at DATETIME NOT NULL,
+status VARCHAR(16) NOT NULL, channel VARCHAR(16) NOT NULL, platform_order_no VARCHAR(24) NULL, ordered_at DATETIME NOT NULL,
 paid_at DATETIME NULL, total_amount DECIMAL(14,2) NOT NULL DEFAULT 0,
 discount_amount DECIMAL(12,2) NOT NULL, shipping_fee DECIMAL(12,2) NOT NULL,
 remark VARCHAR(200) NOT NULL,
 KEY idx_order_customer(customer_id), KEY idx_order_time(ordered_at), KEY idx_order_status_time(status,ordered_at),
-KEY idx_order_tenant_time(tenant_id,ordered_at), FOREIGN KEY(tenant_id) REFERENCES tenant(id),
+KEY idx_order_tenant_time(tenant_id,ordered_at), KEY idx_order_platform_no(platform_order_no), FOREIGN KEY(tenant_id) REFERENCES tenant(id),
 FOREIGN KEY(customer_id) REFERENCES customer(id), FOREIGN KEY(address_id) REFERENCES customer_address(id),
 FOREIGN KEY(warehouse_id) REFERENCES warehouse(id)
 ) ENGINE=InnoDB;
@@ -104,9 +104,9 @@ KEY idx_event_shipment_time(shipment_id,occurred_at), FOREIGN KEY(shipment_id) R
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS purchase_order (
-id BIGINT PRIMARY KEY, supplier_id BIGINT NOT NULL, warehouse_id BIGINT NOT NULL,
+id BIGINT PRIMARY KEY, po_no VARCHAR(20) NOT NULL, supplier_id BIGINT NOT NULL, warehouse_id BIGINT NOT NULL,
 status VARCHAR(16) NOT NULL, ordered_at DATETIME NOT NULL, expected_at DATETIME NOT NULL,
-KEY idx_purchase_supplier(supplier_id), FOREIGN KEY(supplier_id) REFERENCES supplier(id), FOREIGN KEY(warehouse_id) REFERENCES warehouse(id)
+UNIQUE KEY uk_purchase_no(po_no), KEY idx_purchase_supplier(supplier_id), FOREIGN KEY(supplier_id) REFERENCES supplier(id), FOREIGN KEY(warehouse_id) REFERENCES warehouse(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS purchase_order_item (
@@ -117,9 +117,9 @@ FOREIGN KEY(purchase_order_id) REFERENCES purchase_order(id), FOREIGN KEY(sku_id
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS return_order (
-id BIGINT PRIMARY KEY, order_id BIGINT NOT NULL, customer_id BIGINT NOT NULL,
+id BIGINT PRIMARY KEY, return_no VARCHAR(20) NOT NULL, order_id BIGINT NOT NULL, customer_id BIGINT NOT NULL,
 reason VARCHAR(24) NOT NULL, status VARCHAR(16) NOT NULL, requested_at DATETIME NOT NULL,
-refund_amount DECIMAL(12,2) NOT NULL, KEY idx_return_order(order_id), KEY idx_return_customer(customer_id),
+refund_amount DECIMAL(12,2) NOT NULL, UNIQUE KEY uk_return_no(return_no), KEY idx_return_order(order_id), KEY idx_return_customer(customer_id),
 FOREIGN KEY(order_id) REFERENCES sales_order(id), FOREIGN KEY(customer_id) REFERENCES customer(id)
 ) ENGINE=InnoDB;
 
@@ -133,7 +133,7 @@ FOREIGN KEY(return_order_id) REFERENCES return_order(id), FOREIGN KEY(order_item
 CREATE TABLE IF NOT EXISTS stock_movement (
 id BIGINT PRIMARY KEY, warehouse_id BIGINT NOT NULL, sku_id BIGINT NOT NULL,
 movement_type VARCHAR(16) NOT NULL, quantity INT NOT NULL, occurred_at DATETIME NOT NULL,
-reference_no VARCHAR(40) NOT NULL, KEY idx_movement_sku_time(sku_id,occurred_at),
+reference_no VARCHAR(40) CHARACTER SET ascii NOT NULL, KEY idx_movement_sku_time(sku_id,occurred_at), KEY idx_movement_reference(reference_no),
 KEY idx_movement_warehouse_time(warehouse_id,occurred_at), FOREIGN KEY(warehouse_id) REFERENCES warehouse(id), FOREIGN KEY(sku_id) REFERENCES sku(id)
 ) ENGINE=InnoDB;
 
@@ -155,4 +155,16 @@ id BIGINT PRIMARY KEY, customer_id BIGINT NOT NULL UNIQUE, updated_at DATETIME N
 
 CREATE TABLE IF NOT EXISTS shopping_cart_item (
 id BIGINT PRIMARY KEY, cart_id BIGINT NOT NULL, sku_id BIGINT NOT NULL, quantity INT NOT NULL, added_at DATETIME NOT NULL, KEY idx_cart_item_cart(cart_id), KEY idx_cart_item_sku(sku_id), FOREIGN KEY(cart_id) REFERENCES shopping_cart(id), FOREIGN KEY(sku_id) REFERENCES sku(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS promotion (
+id BIGINT PRIMARY KEY, tenant_id BIGINT NOT NULL, code VARCHAR(40) NOT NULL UNIQUE, name VARCHAR(80) NOT NULL,
+discount_rate DECIMAL(5,2) NOT NULL, starts_at DATETIME NOT NULL, ends_at DATETIME NOT NULL, status VARCHAR(16) NOT NULL,
+KEY idx_promotion_tenant(tenant_id), FOREIGN KEY(tenant_id) REFERENCES tenant(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS marketplace_settlement (
+id BIGINT PRIMARY KEY, batch_no VARCHAR(20) NOT NULL, platform_order_no BIGINT NOT NULL,
+settled_amount DECIMAL(14,2) NOT NULL, commission DECIMAL(12,2) NOT NULL, settled_at DATETIME NOT NULL,
+KEY idx_settlement_batch(batch_no), KEY idx_settlement_platform_no(platform_order_no)
 ) ENGINE=InnoDB;

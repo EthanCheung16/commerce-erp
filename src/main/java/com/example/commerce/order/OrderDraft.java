@@ -1,4 +1,4 @@
-package com.example.commerce.business;
+package com.example.commerce.order;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

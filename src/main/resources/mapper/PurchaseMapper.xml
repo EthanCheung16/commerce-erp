@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.commerce.purchase.PurchaseMapper">
+  <select id="purchases" resultType="map">
+    SELECT po.id,po.po_no,po.status,po.ordered_at,po.expected_at,s.name supplier_name,w.name warehouse_name
+    FROM purchase_order po JOIN supplier s ON s.id=po.supplier_id JOIN warehouse w ON w.id=po.warehouse_id
+    <where>
+      <if test="status != null">po.status=#{status}</if>
+      <if test="beforeId != null">AND po.id &lt; #{beforeId}</if>
+    </where>
+    ORDER BY po.id DESC LIMIT #{limit}
+  </select>
+
+  <select id="purchase" resultType="map">
+    SELECT po.*,s.name supplier_name,w.name warehouse_name
+    FROM purchase_order po JOIN supplier s ON s.id=po.supplier_id JOIN warehouse w ON w.id=po.warehouse_id
+    WHERE po.id=#{id}
+  </select>
+
+  <select id="purchaseItems" resultType="map">
+    SELECT pi.*,s.code sku_code FROM purchase_order_item pi JOIN sku s ON s.id=pi.sku_id
+    WHERE pi.purchase_order_id=#{id} ORDER BY pi.id
+  </select>
+
+  <select id="purchaseByNo" resultType="map">
+    SELECT po.id,po.po_no,po.status,po.ordered_at,po.expected_at,s.name supplier_name,w.name warehouse_name
+    FROM purchase_order po JOIN supplier s ON s.id=po.supplier_id JOIN warehouse w ON w.id=po.warehouse_id
+    WHERE po.po_no=#{poNo}
+  </select>
+
+  <select id="supplierReceipts" resultType="map"><![CDATA[
+    SELECT po.id,po.po_no,po.status,po.ordered_at,po.expected_at,w.name warehouse_name,
+      (SELECT SUM(pi.quantity) FROM purchase_order_item pi WHERE pi.purchase_order_id=po.id) ordered_qty,
+      (SELECT SUM(pi.received_qty) FROM purchase_order_item pi WHERE pi.purchase_order_id=po.id) received_qty,
+      (SELECT COALESCE(SUM(m.quantity),0) FROM stock_movement m WHERE m.reference_no=po.po_no) stocked_qty
+    FROM purchase_order po JOIN warehouse w ON w.id=po.warehouse_id
+    WHERE po.supplier_id=#{supplierId}
+    ORDER BY po.ordered_at DESC,po.id DESC
+  ]]></select>
+
+  <select id="warehouseReceipts" resultType="map"><![CDATA[
+    SELECT po.id,po.po_no,po.status,po.ordered_at,po.expected_at,su.name supplier_name,
+      (SELECT SUM(pi.quantity) FROM purchase_order_item pi WHERE pi.purchase_order_id=po.id) ordered_qty,
+      (SELECT COALESCE(SUM(m.quantity),0) FROM stock_movement m
+        WHERE m.reference_no=po.po_no AND m.movement_type='PURCHASE') stocked_qty
+    FROM purchase_order po JOIN supplier su ON su.id=po.supplier_id
+    WHERE po.warehouse_id=#{warehouseId} AND po.ordered_at>=#{from} AND po.ordered_at<#{until}
+    ORDER BY po.ordered_at,po.id
+  ]]></select>
+
+  <select id="supplierSkuSales" resultType="map"><![CDATA[
+    SELECT s.id sku_id,s.code sku_code,p.name product_name,x.units,x.revenue,x.buyers
+    FROM sku s JOIN product p ON p.id=s.product_id
+    JOIN (SELECT i.sku_id,SUM(i.quantity) units,SUM(i.line_amount) revenue,COUNT(DISTINCT o.customer_id) buyers
+          FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+          WHERE o.status<>'CANCELLED' AND i.created_at>=#{from} AND i.created_at<#{until}
+          GROUP BY i.sku_id) x ON x.sku_id=s.id
+    WHERE p.supplier_id=#{supplierId}
+    ORDER BY x.units DESC,s.id
+  ]]></select>
+
+  <select id="restockSuggestions" resultType="map"><![CDATA[
+    SELECT s.id sku_id,s.code sku_code,p.name product_name,x.sold_60d,COALESCE(st.available_qty,0) available_qty
+    FROM (SELECT i.sku_id,SUM(i.quantity) sold_60d FROM sales_order_item i
+          WHERE i.created_at>=DATE_SUB(#{asOf},INTERVAL 60 DAY) AND i.created_at<#{asOf} GROUP BY i.sku_id) x
+    JOIN sku s ON s.id=x.sku_id JOIN product p ON p.id=s.product_id
+    LEFT JOIN (SELECT sku_id,SUM(available_qty) available_qty FROM inventory GROUP BY sku_id) st ON st.sku_id=s.id
+    WHERE p.supplier_id=#{supplierId}
+    ORDER BY x.sold_60d DESC,s.id LIMIT 50
+  ]]></select>
+</mapper>
