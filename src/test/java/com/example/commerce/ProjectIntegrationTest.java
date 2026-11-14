@@ -49,6 +49,30 @@ class ProjectIntegrationTest {
         mvc.perform(get("/api/reports/daily-sales").param("from","2026-02-01")).andExpect(status().isBadRequest());
     }
 
+    @Test void paidOrderReportRespectsMerchantScope() {
+        var rows = reports.run("paid-order-amounts", ReportFilter.defaults());
+        var eligible = new java.util.HashSet<>(jdbc.queryForList(
+            "SELECT id FROM sales_order WHERE tenant_id=2 AND status='PAID'", Long.class));
+        assertThat(rows).isNotEmpty();
+        assertThat(rows).allSatisfy(row ->
+            assertThat(eligible).contains(((Number) row.get("order_id")).longValue()));
+    }
+
+    @Test void warehouseFulfillmentTotalsIncludeEveryStage() {
+        var rows = reports.run("warehouse-fulfillment-units", ReportFilter.defaults());
+        assertThat(rows).extracting(row -> row.get("metric"))
+            .contains("allocated", "packed", "shipped", "returned", "total");
+        var stages = new java.util.HashMap<Long, Long>();
+        var totals = new java.util.HashMap<Long, Long>();
+        rows.forEach(row -> {
+            long warehouse = ((Number) row.get("dimension")).longValue();
+            long quantity = ((Number) row.get("value")).longValue();
+            if ("total".equals(row.get("metric"))) totals.put(warehouse, quantity);
+            else stages.merge(warehouse, quantity, Long::sum);
+        });
+        assertThat(stages).containsExactlyInAnyOrderEntriesOf(totals);
+    }
+
     @Test void frontEndAssetsAndSupportingEndpoints() throws Exception {
         mvc.perform(get("/index.html")).andExpect(status().isOk())
             .andExpect(content().string(org.hamcrest.Matchers.containsString("/assets/app.js")));

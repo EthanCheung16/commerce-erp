@@ -33,42 +33,45 @@ ORDER BY value DESC LIMIT 50
         """)
     List<Map<String, Object>> channelCalendarMix(ReportFilter filter);
 
-    /** 渠道商品购物车关注度 */
+    /** 未退回商品·渠道购物车关注度 */
     @Select("""
 SELECT o.channel dimension,SUM((SELECT COUNT(*) FROM shopping_cart_item x WHERE x.sku_id=i.sku_id)) cart_touches,SUM(i.line_amount) revenue
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer c ON c.id=o.customer_id
-WHERE i.created_at>=#{from} AND i.created_at<#{until}
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN customer c ON c.id=o.customer_id
+WHERE i.fulfillment_status<>'RETURNED' AND i.created_at>=#{from} AND i.created_at<#{until}
 GROUP BY o.channel ORDER BY cart_touches DESC LIMIT 50
         """)
     List<Map<String, Object>> channelCartInterest(ReportFilter filter);
 
-    /** 渠道品类销售额 */
+    /** 未退回商品·渠道品类会员等级销售额 */
     @Select("""
-SELECT o.channel,p.category_id,SUM(i.line_amount) revenue,COUNT(*) line_count
+SELECT o.channel,p.category_id,c.tier,SUM(i.line_amount) revenue,COUNT(*) line_count
 FROM sales_order_item i JOIN sales_order o ON CAST(o.id AS CHAR)=CAST(i.order_id AS CHAR)
-JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id
-WHERE i.created_at>=#{from} AND i.created_at<#{until} GROUP BY o.channel,p.category_id ORDER BY revenue DESC LIMIT 50
+JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer c ON c.id=o.customer_id
+WHERE i.fulfillment_status<>'RETURNED' AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY o.channel,p.category_id,c.tier ORDER BY revenue DESC LIMIT 50
         """)
     List<Map<String, Object>> channelCategorySales(ReportFilter filter);
 
-    /** 享受订单优惠的商品数量 */
+    /** 1–4号商户·享受订单优惠的商品数量 */
     @Select("""
 SELECT o.id order_id,MAX(o.order_no) order_no,SUM(i.quantity) units
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer c ON c.id=o.customer_id
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+WHERE o.tenant_id IN (1,2,3,4)
 GROUP BY o.id HAVING MAX(o.discount_amount)>0 ORDER BY units DESC,o.id LIMIT 50
         """)
     List<Map<String, Object>> discountedOrders(ReportFilter filter);
 
-    /** 促销活动销售统计 */
+    /** 1号商户非取消订单·促销活动销售统计 */
     @Select("""
 SELECT COALESCE(i.promotion_code,'NONE') promotion,p.category_id,SUM(i.line_amount) revenue
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id WHERE COALESCE(i.promotion_code,'NONE') <> 'INVALID' GROUP BY promotion,p.category_id ORDER BY revenue DESC LIMIT 50
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id WHERE o.status<>'CANCELLED' AND o.tenant_id=1 AND COALESCE(i.promotion_code,'NONE') <> 'INVALID' GROUP BY promotion,p.category_id ORDER BY revenue DESC LIMIT 50
         """)
     List<Map<String, Object>> promotionSales(ReportFilter filter);
 
     /** 商户成交订单数 */
     @Select("""
 SELECT o.tenant_id dimension,COUNT(DISTINCT o.id) order_count FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+LEFT JOIN customer c ON c.id=o.customer_id
+LEFT JOIN customer_address a ON a.id=o.address_id
 LEFT JOIN warehouse w ON w.id=o.warehouse_id
 LEFT JOIN tenant t ON t.id=o.tenant_id
 LEFT JOIN sku s ON s.id=i.sku_id
@@ -81,17 +84,18 @@ GROUP BY o.tenant_id ORDER BY order_count DESC LIMIT 50
         """)
     List<Map<String, Object>> tenantOrderCoverage(ReportFilter filter);
 
-    /** 手机号段客户消费贡献 */
+    /** 1号商户非取消订单·手机号段客户消费贡献 */
     @Select("""
 SELECT LEFT(c.phone,3) prefix,c.tier,p.category_id,SUM(i.line_amount) revenue
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer c ON c.id=o.customer_id WHERE LEFT(c.phone,3)='138' GROUP BY prefix,c.tier,p.category_id ORDER BY revenue DESC LIMIT 50
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer c ON c.id=o.customer_id WHERE o.status<>'CANCELLED' AND o.tenant_id=1 AND LEFT(c.phone,3)='138' GROUP BY prefix,c.tier,p.category_id ORDER BY revenue DESC LIMIT 50
         """)
     List<Map<String, Object>> phonePrefixSales(ReportFilter filter);
 
-    /** 白金客户订单优惠额 */
+    /** 1–4号商户·白金客户订单优惠额 */
     @Select("""
 SELECT o.id order_id,MAX(o.order_no) order_no,SUM(i.discount_amount) discount_total
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer c ON c.id=o.customer_id
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN customer c ON c.id=o.customer_id
+WHERE o.tenant_id IN (1,2,3,4)
 GROUP BY o.id HAVING MAX(c.tier)='PLATINUM' ORDER BY discount_total DESC,o.id LIMIT 50
         """)
     List<Map<String, Object>> platinumOrderDiscounts(ReportFilter filter);
@@ -99,7 +103,7 @@ GROUP BY o.id HAVING MAX(c.tier)='PLATINUM' ORDER BY discount_total DESC,o.id LI
     /** 省份客户多地址覆盖 */
     @Select("""
 SELECT c.province dimension,SUM((SELECT COUNT(*) FROM customer_address x WHERE x.customer_id=o.customer_id)) address_touches,SUM(i.line_amount) revenue
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer c ON c.id=o.customer_id
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN customer c ON c.id=o.customer_id
 WHERE i.created_at>=#{from} AND i.created_at<#{until}
 GROUP BY c.province ORDER BY address_touches DESC LIMIT 50
         """)
@@ -152,36 +156,37 @@ ORDER BY value DESC LIMIT 50
         """)
     List<Map<String, Object>> categoryWeightBands(ReportFilter filter);
 
-    /** 门店或高周转商品销售 */
+    /** 成交订单·省份门店及高周转商品销售 */
     @Select("""
-SELECT p.category_id dimension,SUM(i.line_amount) revenue,SUM(i.quantity) units,COUNT(*) line_count
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer c ON c.id=o.customer_id
-WHERE (o.channel='STORE' OR i.sku_id IN (SELECT sku_id FROM stock_movement GROUP BY sku_id HAVING SUM(ABS(quantity))>100)) AND i.created_at>=#{from} AND i.created_at<#{until}
-GROUP BY p.category_id ORDER BY revenue DESC LIMIT 50
+SELECT p.category_id dimension,a.province,SUM(i.line_amount) revenue,SUM(i.quantity) units,COUNT(*) line_count
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer_address a ON a.id=o.address_id
+WHERE o.status IN ('PAID','SHIPPED','COMPLETED','REFUNDING') AND (o.channel='STORE' OR i.sku_id IN (SELECT sku_id FROM stock_movement GROUP BY sku_id HAVING SUM(ABS(quantity))>100)) AND i.created_at>=#{from} AND i.created_at<#{until}
+GROUP BY p.category_id,a.province ORDER BY revenue DESC LIMIT 50
         """)
     List<Map<String, Object>> inventoryMovementRevenue(ReportFilter filter);
 
-    /** 折扣或高退货商品销售 */
+    /** 1–3号商户·折扣或高退货商品销售 */
     @Select("""
 SELECT p.brand_id dimension,SUM(i.line_amount) revenue,SUM(i.quantity) units,COUNT(*) line_count
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer c ON c.id=o.customer_id
-WHERE (i.discount_amount>=7 OR i.sku_id IN (SELECT xi.sku_id FROM return_item ri JOIN sales_order_item xi ON xi.id=ri.order_item_id GROUP BY xi.sku_id HAVING COUNT(*)>=5)) AND i.created_at>=#{from} AND i.created_at<#{until}
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id
+WHERE o.tenant_id BETWEEN 1 AND 3 AND (i.discount_amount>=7 OR i.sku_id IN (SELECT xi.sku_id FROM return_item ri JOIN sales_order_item xi ON xi.id=ri.order_item_id GROUP BY xi.sku_id HAVING COUNT(*)>=5)) AND i.created_at>=#{from} AND i.created_at<#{until}
 GROUP BY p.brand_id ORDER BY revenue DESC LIMIT 50
         """)
     List<Map<String, Object>> returnExposureRevenue(ReportFilter filter);
 
-    /** 已发货订单商品种类 */
+    /** 1–4号商户·已发货订单商品种类 */
     @Select("""
 SELECT o.id order_id,MAX(o.order_no) order_no,COUNT(DISTINCT i.sku_id) sku_count
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer c ON c.id=o.customer_id
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+WHERE o.tenant_id IN (1,2,3,4)
 GROUP BY o.id HAVING MAX(o.status)='SHIPPED' ORDER BY sku_count DESC,o.id LIMIT 50
         """)
     List<Map<String, Object>> shippedOrderLines(ReportFilter filter);
 
-    /** 仓库每日销量 */
+    /** 1–2号商户非取消订单·仓库每日销量 */
     @Select("""
 SELECT CAST(i.created_at AS DATE) sale_date,o.warehouse_id,SUM(i.quantity) units
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id WHERE CAST(i.created_at AS DATE)>=CAST(#{from} AS DATE) AND CAST(i.created_at AS DATE)<CAST(#{until} AS DATE)
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id WHERE o.status<>'CANCELLED' AND o.tenant_id IN (1,2) AND CAST(i.created_at AS DATE)>=CAST(#{from} AS DATE) AND CAST(i.created_at AS DATE)<CAST(#{until} AS DATE)
 GROUP BY sale_date,o.warehouse_id ORDER BY units DESC LIMIT 50
         """)
     List<Map<String, Object>> warehouseDailySales(ReportFilter filter);
@@ -210,11 +215,11 @@ GROUP BY o.warehouse_id ORDER BY sku_count DESC LIMIT 50
         """)
     List<Map<String, Object>> warehouseProductCoverage(ReportFilter filter);
 
-    /** 仓库物流轨迹覆盖 */
+    /** 非取消订单·仓库物流轨迹覆盖 */
     @Select("""
 SELECT o.warehouse_id dimension,SUM((SELECT COUNT(*) FROM shipment x JOIN shipment_event e ON e.shipment_id=x.id WHERE x.order_id=o.id)) event_touches,SUM(i.line_amount) revenue
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer c ON c.id=o.customer_id
-WHERE i.created_at>=#{from} AND i.created_at<#{until}
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+WHERE o.status<>'CANCELLED' AND i.created_at>=#{from} AND i.created_at<#{until}
 GROUP BY o.warehouse_id ORDER BY event_touches DESC LIMIT 50
         """)
     List<Map<String, Object>> warehouseShipmentEventCounts(ReportFilter filter);
@@ -230,11 +235,11 @@ GROUP BY p.supplier_id ORDER BY revenue DESC LIMIT 50
 
     /** 供应商促销参与结构 */
     @Select("""
-SELECT p.supplier_id dimension,'promoted' metric,SUM(i.line_amount) value FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id WHERE (i.promotion_code IS NOT NULL) AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY p.supplier_id
+SELECT p.supplier_id dimension,'promoted' metric,SUM(i.line_amount) value FROM sales_order_item i JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id WHERE (i.promotion_code IS NOT NULL) AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY p.supplier_id
 UNION
-SELECT p.supplier_id dimension,'organic' metric,SUM(i.line_amount) value FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id WHERE (i.promotion_code IS NULL) AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY p.supplier_id
+SELECT p.supplier_id dimension,'organic' metric,SUM(i.line_amount) value FROM sales_order_item i JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id WHERE (i.promotion_code IS NULL) AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY p.supplier_id
 UNION
-SELECT p.supplier_id dimension,'total' metric,SUM(i.line_amount) value FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id WHERE (1=1) AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY p.supplier_id
+SELECT p.supplier_id dimension,'total' metric,SUM(i.line_amount) value FROM sales_order_item i JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id WHERE (1=1) AND i.created_at>=#{from} AND i.created_at<#{until} GROUP BY p.supplier_id
 ORDER BY value DESC LIMIT 50
         """)
     List<Map<String, Object>> supplierPromotionMix(ReportFilter filter);
@@ -242,6 +247,7 @@ ORDER BY value DESC LIMIT 50
     /** 渠道商品优惠率 */
     @Select("""
 SELECT o.channel dimension,SUM(i.discount_amount)/NULLIF(SUM(i.unit_price*i.quantity),0) discount_rate FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+LEFT JOIN customer c ON c.id=o.customer_id
 LEFT JOIN warehouse w ON w.id=o.warehouse_id
 LEFT JOIN tenant t ON t.id=o.tenant_id
 LEFT JOIN sku s ON s.id=i.sku_id
@@ -254,10 +260,10 @@ GROUP BY o.channel ORDER BY discount_rate DESC LIMIT 50
         """)
     List<Map<String, Object>> channelDiscountRate(ReportFilter filter);
 
-    /** 折扣区间销售额 */
+    /** 1号商户非取消订单·折扣区间销售额 */
     @Select("""
 SELECT ROUND(ABS(i.discount_amount),0) discount_band,p.brand_id,SUM(i.line_amount) revenue
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id WHERE ABS(i.discount_amount)>=0 GROUP BY discount_band,p.brand_id ORDER BY revenue DESC LIMIT 50
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id WHERE o.status<>'CANCELLED' AND o.tenant_id=1 AND ABS(i.discount_amount)>=0 GROUP BY discount_band,p.brand_id ORDER BY revenue DESC LIMIT 50
         """)
     List<Map<String, Object>> discountBandSales(ReportFilter filter);
 
@@ -270,18 +276,20 @@ WHERE selected.discount_amount>=40 ORDER BY x.revenue DESC LIMIT 50
         """)
     List<Map<String, Object>> discountOrderValue(ReportFilter filter);
 
-    /** 平台渠道订单毛利 */
+    /** 1–4号商户·平台渠道订单毛利 */
     @Select("""
 SELECT o.id order_id,MAX(o.order_no) order_no,SUM(i.line_amount-s.cost*i.quantity) margin
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer c ON c.id=o.customer_id
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id
+WHERE o.tenant_id IN (1,2,3,4)
 GROUP BY o.id HAVING MAX(o.channel)='MARKETPLACE' ORDER BY margin DESC,o.id LIMIT 50
         """)
     List<Map<String, Object>> marketplaceOrderMargin(ReportFilter filter);
 
-    /** 按支付时间筛选订单货值 */
+    /** 1–4号商户·按支付时间筛选订单货值 */
     @Select("""
 SELECT o.id order_id,MAX(o.order_no) order_no,SUM(i.line_amount) revenue
-FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id JOIN sku s ON s.id=i.sku_id JOIN product p ON p.id=s.product_id JOIN customer c ON c.id=o.customer_id
+FROM sales_order_item i JOIN sales_order o ON o.id=i.order_id
+WHERE o.tenant_id IN (1,2,3,4)
 GROUP BY o.id HAVING MIN(o.paid_at)>=#{from} AND MAX(o.paid_at)<#{until} ORDER BY revenue DESC,o.id LIMIT 50
         """)
     List<Map<String, Object>> paidDateOrderValue(ReportFilter filter);
